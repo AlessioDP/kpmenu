@@ -1,0 +1,28 @@
+# This is the default config of kpmenu
+# You can store it into $HOME/.config/kpmenu/config
+[general]
+UseRofi = false
+ClipboardTimeout = 15
+NoCache = false
+CacheOneTime = false
+CacheTimeout = 60
+
+[style]
+PasswordBackground = "black"
+TextPassword = "Password"
+TextMenu = "Select"
+TextEntry = "Entry"
+TextField = "Field"
+FormatEntry = "{Title} - {UserName}"
+#ArgsPassword =
+#ArgsMenu =
+#ArgsEntry =
+#ArgsField =
+
+[database]
+#Database =
+#KeyFile =
+#Password =
+FieldOrder = "Password UserName URL"
+FillOtherFields = true
+#FillBlacklist =

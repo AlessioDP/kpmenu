@@ -1,0 +1,5 @@
+# Ignore databases
+*.kdbx
+
+# Ignore kpmenu executable
+kpmenu
