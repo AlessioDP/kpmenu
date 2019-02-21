@@ -12,6 +12,7 @@ Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or r
 
 ## Dependencies
 * `dmenu` or `rofi`
+* `xsel`
 * `go` (compile only)
 
 ## Usage
