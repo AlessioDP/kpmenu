@@ -1,5 +1,6 @@
 PKGNAME := kpmenu
 BINNAME := ${PKGNAME}
+DESTDIR := /usr
 
 .PHONY: all build clean install run uninstall
 
@@ -12,12 +13,12 @@ clean:
 	rm -f ${BINNAME}
 
 install:
-	install -Dm755 ${BINNAME} /usr/bin/${BINNAME}
-	install -Dm644 LICENSE /usr/share/licenses/${PKGNAME}/LICENSE
+	install -Dm755 ${BINNAME} ${DESTDIR}/bin/${BINNAME}
+	install -Dm644 LICENSE ${DESTDIR}/share/licenses/${PKGNAME}/LICENSE
 
 run:
 	go run main.go
 
 uninstall:
-	rm -f /usr/bin/${BINNAME}
-	rm -f /usr/share/licenses/${PKGNAME}/LICENSE
+	rm -f ${DESTDIR}/bin/${BINNAME}
+	rm -f ${DESTDIR}/share/licenses/${PKGNAME}/LICENSE
