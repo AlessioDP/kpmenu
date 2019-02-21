@@ -7,6 +7,7 @@ DESTDIR := /usr
 all: build
 
 build:
+	go get -v
 	go build -v -o ${BINNAME}
 
 clean:
