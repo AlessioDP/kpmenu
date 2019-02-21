@@ -5,9 +5,10 @@ Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or r
 * Supports KDBX v3.1 and v4.0 (based on [gokeepasslib](https://github.com/tobischo/gokeepasslib))
 * Pretty fast database decode thanks to Go
 * Interfaced with dmenu or rofi
-* Customize dmenu/rofi with additional commands argument
+* Customize dmenu/rofi with additional command arguments
+* Kpmenu main isntance stay alive for future calls so you don't need to re-insert the password
 * The open database can be cached so you don't need to re-insert the password
-* Automatically put selected value into the clipboard (for a custom time) thanks to `xsel`
+* Automatically put selected value into the clipboard (for a custom time) thanks to xsel
 * Hidden password typing
 
 ## Dependencies
@@ -29,24 +30,21 @@ kpmenu -p "mypassword" -r
 ```
 
 ## Installation
+### From AUR
+You can directly install the package [kpmenu](https://aur.archlinux.org/packages/kpmenu/).
 
 ### Compiling from source
-Clone the project and cd into it:
 ```bash
+# Clone repository
 git clone https://github.com/AlessioDP/kpmenu
 cd kpmenu
-```
-Get dependencies and build it
-```bash
-go get
-go build
-```
 
-Install it into `$GOPATH/bin` with:
-```bash
-go install
+# Build
+make build
+
+# Install
+sudo make install
 ```
-Or just execute `./kpmenu`.
 
 
 ## Configuration
