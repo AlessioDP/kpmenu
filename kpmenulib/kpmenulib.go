@@ -9,7 +9,7 @@ import (
 )
 
 // Version is the version of kpmenu
-const Version = "1.0.0"
+const Version = "1.0.2"
 
 // Initialize is the function that initialize a menu, handle config and parse cli arguments
 func Initialize() *Menu {
