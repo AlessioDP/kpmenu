@@ -2,6 +2,7 @@
 # You can store it into $HOME/.config/kpmenu/config
 [general]
 UseRofi = false
+ClipboardTool = "xsel"
 ClipboardTimeout = 15
 NoCache = false
 CacheOneTime = false
