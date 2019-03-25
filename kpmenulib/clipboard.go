@@ -9,9 +9,14 @@ import (
 )
 
 // CopyToClipboard copies text into the clipboar
-func CopyToClipboard(text string) error {
-	// Execute xsel to update clipboard
-	cmd := exec.Command("xsel", "-ib")
+func CopyToClipboard(menu *Menu, text string) error {
+	var cmd *exec.Cmd
+	// Execute xsel/wl-clipboard to update clipboard
+	if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
+		cmd = exec.Command("wl-copy")
+	} else {
+		cmd = exec.Command("xsel", "-ib")
+	}
 
 	// Set sdtin
 	cmd.Stdin = strings.NewReader(text)
@@ -23,11 +28,16 @@ func CopyToClipboard(text string) error {
 }
 
 // GetClipboard gets the current clipboard
-func GetClipboard() (string, error) {
+func GetClipboard(menu *Menu) (string, error) {
 	var out bytes.Buffer
+	var cmd *exec.Cmd
 
-	// Execute xsel to get clipboard
-	cmd := exec.Command("xsel", "-b")
+	// Execute xsel/wl-clipboard to get clipboard
+	if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
+		cmd = exec.Command("wl-paste", "-n")
+	} else {
+		cmd = exec.Command("xsel", "-b")
+	}
 
 	// Set stdout
 	cmd.Stdout = &out
@@ -51,15 +61,21 @@ func CleanClipboard(menu *Menu, text string) {
 
 			// Execute GetClipboard to match old and current cliboard
 			// Clean clipboard only if contains the field value
-			currentClipboard, err := GetClipboard()
+			currentClipboard, err := GetClipboard(menu)
+
 			if err == nil {
 				if text == currentClipboard {
+					var cmd *exec.Cmd
 					// Execute xsel to clean clipboard
-					cmd := exec.Command("xsel", "-bc")
+					if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
+						cmd = exec.Command("wl-copy", "-c")
+					} else {
+						cmd = exec.Command("xsel", "-bc")
+					}
 
 					// Run exec
 					if err = cmd.Run(); err != nil {
-						log.Printf("failed to clean clipboard: %s", err)
+						log.Printf("failed to clean '%s' clipboard: %s", menu.Configuration.General.ClipboardTool, err)
 					} else {
 						log.Printf("cleaned clipboard")
 					}
@@ -67,7 +83,7 @@ func CleanClipboard(menu *Menu, text string) {
 					log.Printf("clean clipboard cancelled because its changed")
 				}
 			} else {
-				log.Printf("failed to get the clipboard: %s", err)
+				log.Printf("failed to get '%s' clipboard: %s", menu.Configuration.General.ClipboardTool, err)
 			}
 		}()
 	}

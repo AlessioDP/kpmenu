@@ -20,11 +20,12 @@ type Configuration struct {
 
 // ConfigurationGeneral is the sub-structure of the configuration related to general kpmenu settings
 type ConfigurationGeneral struct {
-	UseRofi          bool // Use Rofi instead of dmenu
-	ClipboardTimeout int  // Clipboard timeout before clean it
-	NoCache          bool // Flag to do not cache master password
-	CacheOneTime     bool // Cache the password only the first time you write it
-	CacheTimeout     int  // Timeout of cache
+	UseRofi          bool   // Use Rofi instead of dmenu
+	ClipboardTool    string // Clipboard tool to use
+	ClipboardTimeout int    // Clipboard timeout before clean it
+	NoCache          bool   // Flag to do not cache master password
+	CacheOneTime     bool   // Cache the password only the first time you write it
+	CacheTimeout     int    // Timeout of cache
 }
 
 // ConfigurationStyle is the sub-structure of the configuration related to style of dmenu
@@ -56,10 +57,17 @@ type Flags struct {
 	Version bool
 }
 
+// Clipboard tool to use for clipboard manager
+const (
+	ClipboardToolXsel        = "xsel"
+	ClipboardToolWlclipboard = "wl-clipboard"
+)
+
 // NewConfiguration initializes a new Configuration pointer
 func NewConfiguration() *Configuration {
 	return &Configuration{
 		General: ConfigurationGeneral{
+			ClipboardTool:    ClipboardToolXsel,
 			ClipboardTimeout: 15,
 			CacheTimeout:     60,
 		},
@@ -112,7 +120,8 @@ func (c *Configuration) InitializeFlags() {
 
 	// General
 	flag.BoolVarP(&c.General.UseRofi, "rofi", "r", c.General.UseRofi, "Use rofi instead of dmenu")
-	flag.IntVarP(&c.General.ClipboardTimeout, "clip", "c", c.General.ClipboardTimeout, "Timeout of clipboard in seconds (0 = no timeout)")
+	flag.StringVar(&c.General.ClipboardTool, "clipboardTool", c.General.ClipboardTool, "Choose which clipboard tool to use")
+	flag.IntVarP(&c.General.ClipboardTimeout, "clipboardTime", "c", c.General.ClipboardTimeout, "Timeout of clipboard in seconds (0 = no timeout)")
 	flag.BoolVarP(&c.General.NoCache, "nocache", "n", c.General.NoCache, "Disable caching of database")
 	flag.BoolVar(&c.General.CacheOneTime, "cacheOneTime", c.General.CacheOneTime, "Cache the database only the first time")
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")

@@ -127,8 +127,8 @@ func (m *Menu) entrySelection() *ErrorDatabase {
 	}
 
 	// Copy to clipboard
-	if err := CopyToClipboard(fieldValue); err != nil {
-		return NewErrorDatabase("failed to use xsel to update clipboard: %s", err, true)
+	if err := CopyToClipboard(m, fieldValue); err != nil {
+		return NewErrorDatabase("failed to use clipboard manager to update clipboard: %s", err, true)
 	}
 	log.Printf("copied field into the clipboard")
 

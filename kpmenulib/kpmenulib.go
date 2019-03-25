@@ -141,11 +141,20 @@ func checkFlags(menu *Menu) error {
 		}
 	}
 
-	// Check if xclip is installed
-	cmd := exec.Command("which", "xsel")
-	err := cmd.Run()
-	if err != nil {
-		return errors.New("xsel not found, exiting")
+	if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
+		// Check if wl-clipboard is installed
+		cmd := exec.Command("which", "wl-copy")
+		err := cmd.Run()
+		if err != nil {
+			return errors.New("wl-clipboard not found, exiting")
+		}
+	} else {
+		// Check if xsel is installed
+		cmd := exec.Command("which", "xsel")
+		err := cmd.Run()
+		if err != nil {
+			return errors.New("xsel not found, exiting")
+		}
 	}
 	return nil
 }
