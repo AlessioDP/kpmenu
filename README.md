@@ -36,6 +36,7 @@ kpmenu -p "mypassword" -r
 You can directly install the package [kpmenu](https://aur.archlinux.org/packages/kpmenu/).
 
 ### Compiling from source
+If you do not set `$GOPATH`, go sources will be downloaded into `$HOME/go`.
 ```bash
 # Clone repository
 git clone https://github.com/AlessioDP/kpmenu
