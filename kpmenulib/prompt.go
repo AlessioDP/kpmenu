@@ -68,7 +68,7 @@ func PromptPassword(menu *Menu) (string, ErrorPrompt) {
 }
 
 // PromptMenu executes dmenu to ask for menu selection
-// Returns the MenuSelection choosen
+// Returns the MenuSelection chosen
 func PromptMenu(menu *Menu) (MenuSelection, ErrorPrompt) {
 	var selection MenuSelection
 	var input strings.Builder

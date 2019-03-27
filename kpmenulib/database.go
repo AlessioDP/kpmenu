@@ -1,6 +1,7 @@
 package kpmenulib
 
 import (
+	"log"
 	"os"
 
 	"github.com/tobischo/gokeepasslib/v2"
@@ -33,12 +34,15 @@ func (db *Database) AddCredentialsToDatabase(cfg *Configuration, password string
 	if password != "" && cfg.Database.KeyFile != "" {
 		// Both password & keyfile
 		db.Keepass.Credentials, _ = gokeepasslib.NewPasswordAndKeyCredentials(password, cfg.Database.KeyFile)
+		log.Printf("credentials: password + keyfile")
 	} else if password != "" {
 		// Only password
 		db.Keepass.Credentials = gokeepasslib.NewPasswordCredentials(password)
+		log.Printf("credentials: password")
 	} else if cfg.Database.KeyFile != "" {
 		// Only keyfile
 		db.Keepass.Credentials, _ = gokeepasslib.NewKeyCredentials(cfg.Database.KeyFile)
+		log.Printf("credentials: keyfile")
 	}
 }
 
