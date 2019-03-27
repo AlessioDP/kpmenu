@@ -1,3 +1,4 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/AlessioDP/kpmenu)](https://goreportcard.com/report/github.com/AlessioDP/kpmenu) [![Travis CI](https://travis-ci.com/AlessioDP/kpmenu.svg?branch=master)](https://travis-ci.com/AlessioDP/kpmenu)
 # Kpmenu
 Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or rofi, menu.
 
@@ -22,10 +23,10 @@ Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or r
 I created kpmenu to make an easy and fast way to access into my KeePass database. These are some commands that you can do:
 ```bash
 # Open a database
-kpmenu -db path/to/database.kdbx
+kpmenu -d path/to/database.kdbx
 
 # Open a database with a key
-kpmenu -db path/to/database.kdbx -k path/to/database.key
+kpmenu -d path/to/database.kdbx -k path/to/database.key
 
 # Open a database (credentials taken from config) with a password and rofi
 kpmenu -p "mypassword" -r
@@ -48,7 +49,6 @@ make build
 # Install
 sudo make install
 ```
-
 
 ## Configuration
 You can set options via `config` or cli arguments.
