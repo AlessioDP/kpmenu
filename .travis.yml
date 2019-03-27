@@ -4,4 +4,4 @@ go_import_path: github.com/AlessioDP/kpmenu
 go:
   - 1.10.x
   - 1.11.x
-  - master
+  - 1.12.x
