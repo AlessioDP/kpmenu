@@ -7,8 +7,10 @@ Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or r
 *   Pretty fast database decode thanks to Go
 *   Interfaced with dmenu or rofi
 *   Customize dmenu/rofi with additional command arguments
-*   Kpmenu main instance stay alive for future calls so you don't need to re-insert the password
-*   The open database can be cached so you don't need to re-insert the password
+*   Kpmenu can be started as a daemon, so you don't need to re-insert credentials
+    *   By default the first instance of kpmenu will enter in daemon mode (cache option) for 60 seconds
+    *   You can start a permanent daemon with `--daemon` option (it won't ask open the database)
+    *   Even if the cache times out, the daemon won't be killed
 *   Automatically put selected value into the clipboard (for a custom time)
     *   xsel and wl-clipboard supported
     *   By default it will use xsel, you can override it via config or `--clipboardTool` option
@@ -64,22 +66,23 @@ Usage of ./kpmenu:
       --argsMenu string             Additional arguments for dmenu at menu selection, separated by a space
       --argsPassword string         Additional arguments for dmenu at password selection, separated by a space
       --cacheOneTime                Cache the database only the first time
-      --cacheTimeout int            Timeout of cache in seconds (default 60)
-  -c, --clipboardTime int           Timeout of clipboard in seconds (0 = no timeout) (default 15)
-      --clipboardTool string        Choose which clipboard tool to use (default "xsel")
-  -d, --database string             Path to the KeePass database (default "/home/alessiodp/.kpass_pw/data.kdbx")
-      --fieldOrder string           String order of fields to show on field selection (default "Password UserName URL")
-      --fillBlacklist string        String of blacklisted fields that won't be shown (default "UUID")
-      --fillOtherFields             Enable fill of remaining fields (default true)
-  -k, --keyfile string              Path to the database keyfile (default "/home/alessiodp/.kpass_pw/data.key")
+      --cacheTimeout int            Timeout of cache in seconds
+  -c, --clipboardTime int           Timeout of clipboard in seconds (0 = no timeout)
+      --clipboardTool string        Choose which clipboard tool to use
+      --daemon                      Start kpmenu directly as daemon
+  -d, --database string             Path to the KeePass database
+      --fieldOrder string           String order of fields to show on field selection
+      --fillBlacklist string        String of blacklisted fields that won't be shown
+      --fillOtherFields             Enable fill of remaining fields
+  -k, --keyfile string              Path to the database keyfile
   -n, --nocache                     Disable caching of database
   -p, --password string             Password of the database
-      --passwordBackground string   Color of dmenu background and text for password selection, used to hide password typing (default "black")
+      --passwordBackground string   Color of dmenu background and text for password selection, used to hide password typing
   -r, --rofi                        Use rofi instead of dmenu
-      --textEntry string            Label for entry selection (default "Entry")
-      --textField string            Label for field selection (default "Field")
-      --textMenu string             Label for menu selection (default "Select")
-      --textPassword string         Label for password selection (default "Password")
+      --textEntry string            Label for entry selection
+      --textField string            Label for field selection
+      --textMenu string             Label for menu selection
+      --textPassword string         Label for password selection
   -v, --version                     Show kpmenu version
 ```
 
