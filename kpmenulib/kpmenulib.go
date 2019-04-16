@@ -27,6 +27,11 @@ func Initialize() *Menu {
 		return nil
 	}
 
+	// Set start cache time, if not a daemon
+	if !menu.Configuration.Flags.Daemon && !menu.Configuration.General.NoCache {
+		menu.CacheStart = time.Now()
+	}
+
 	return menu
 }
 
@@ -72,25 +77,30 @@ func Show(menu *Menu) bool {
 		log.Printf("database configuration is changed, re-opening the database")
 	}
 
-	// Check if the cache is not timed out
-	if menu.Configuration.General.NoCache {
-		menu.Database.Loaded = false
-		log.Printf("no cache flag is set, re-opening the database")
-	} else if (menu.CacheStart == time.Time{}) {
-		menu.Database.Loaded = false
-		log.Printf("cache start time not set, re-opening the database")
-	} else {
-		difference := int(time.Now().Sub(menu.CacheStart).Seconds())
-		if difference < menu.Configuration.General.CacheTimeout {
-			// Cache is valid
-			if !menu.Configuration.General.CacheOneTime {
-				// Set new cache start if cache one time is false
-				menu.CacheStart = time.Now()
-			}
-		} else {
-			// Cache timed out
+	// Check if the cache is not timed out, if not a daemon
+	if !menu.Configuration.Flags.Daemon {
+		if menu.Configuration.General.NoCache {
+			// Cache disabled
 			menu.Database.Loaded = false
-			log.Printf("cache timed out, re-opening the database")
+			log.Printf("no cache flag is set, re-opening the database")
+		} else if (menu.CacheStart == time.Time{}) {
+			// Cache enabled via client call
+			menu.Database.Loaded = false
+			log.Printf("cache start time not set, re-opening the database")
+		} else {
+			// Cache exists
+			difference := int(time.Now().Sub(menu.CacheStart).Seconds())
+			if difference < menu.Configuration.General.CacheTimeout {
+				// Cache is valid
+				if !menu.Configuration.General.CacheOneTime {
+					// Set new cache start if cache one time is false
+					menu.CacheStart = time.Now()
+				}
+			} else {
+				// Cache timed out
+				menu.Database.Loaded = false
+				log.Printf("cache timed out, re-opening the database")
+			}
 		}
 	}
 

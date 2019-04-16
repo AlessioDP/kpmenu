@@ -54,6 +54,7 @@ type ConfigurationDatabase struct {
 
 // Flags is the sub-structure of the configuration used to handle flags that aren't into the config file
 type Flags struct {
+	Daemon  bool
 	Version bool
 }
 
@@ -116,6 +117,7 @@ func (c *Configuration) LoadConfig() error {
 // InitializeFlags prepare cli flags
 func (c *Configuration) InitializeFlags() {
 	// Flags
+	flag.BoolVar(&c.Flags.Daemon, "daemon", false, "Starts directly as daemon")
 	flag.BoolVarP(&c.Flags.Version, "version", "v", false, "Show kpmenu version")
 
 	// General

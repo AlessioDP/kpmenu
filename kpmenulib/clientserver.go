@@ -37,29 +37,36 @@ func StartClient() error {
 }
 
 // StartServer starts to listen for client packets
-func StartServer(m *Menu) error {
-	// No cache enabled
-	if m.Configuration.General.NoCache {
+func StartServer(m *Menu) (err error) {
+	if m.Configuration.Flags.Daemon {
+		log.Printf("Executing as daemon")
+	}
+
+	if m.Configuration.General.NoCache && !m.Configuration.Flags.Daemon {
+		// Directly execute kpmenu
 		if fatal := Execute(m); fatal == true {
 			os.Exit(1) // Set exit code to 1 and exit
 		}
-		return nil
-	}
+	} else {
+		// Handle packet request
+		handlePacket := func(packet Packet) bool {
+			log.Printf("received a client call with args \"%v\"", packet.CliArguments)
+			m.CliArguments = packet.CliArguments
+			return Show(m)
+		}
 
-	handlePacket := func(packet Packet) bool {
-		log.Printf("received a client call with args \"%v\"", packet.CliArguments)
-		m.CliArguments = packet.CliArguments
-		return Show(m)
-	}
+		// Execute kpmenu for the first time, if not a daemon
+		exit := false
+		if !m.Configuration.Flags.Daemon {
+			exit = Execute(m)
+		}
 
-	// Execute kpmenu for the first time
-	exit := Execute(m)
-
-	// If exit is false (cache on) listen for client calls
-	if !exit {
-		return setupListener(m, handlePacket)
+		// If exit is false (cache on) listen for client calls
+		if !exit {
+			err = setupListener(m, handlePacket)
+		}
 	}
-	return nil
+	return
 }
 
 func setupListener(m *Menu, handlePacket func(Packet) bool) error {
@@ -81,8 +88,11 @@ func setupListener(m *Menu, handlePacket func(Packet) bool) error {
 
 	exit := false
 	for !exit {
-		remainingCacheTime := m.Configuration.General.CacheTimeout - int(time.Now().Sub(m.CacheStart).Seconds())
-		tcpListener.SetDeadline(time.Now().Add(time.Second * time.Duration(remainingCacheTime)))
+		if !m.Configuration.Flags.Daemon {
+			// If not a daemon prepare cache time
+			remainingCacheTime := m.Configuration.General.CacheTimeout - int(time.Now().Sub(m.CacheStart).Seconds())
+			tcpListener.SetDeadline(time.Now().Add(time.Second * time.Duration(remainingCacheTime)))
+		}
 
 		// Listen to calls
 		conn, err := listener.Accept()
@@ -118,7 +128,8 @@ func setupListener(m *Menu, handlePacket func(Packet) bool) error {
 		select {
 		case packet := <-ch:
 			// Received the data
-			exit = handlePacket(packet)
+			fatal := handlePacket(packet)
+			exit = (fatal && !m.Configuration.Flags.Daemon)
 			break
 		case err := <-errCh:
 			// Received an error

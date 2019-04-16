@@ -63,11 +63,6 @@ func (m *Menu) OpenDatabase() *ErrorDatabase {
 	// Set database as loaded
 	m.Database.Loaded = true
 
-	// Set cache start time
-	if !m.Configuration.General.NoCache {
-		m.CacheStart = time.Now()
-	}
-
 	return nil
 }
 
