@@ -1,4 +1,8 @@
 # Changelog
+## 1.2.0 (2019/04/16)
+*   Added daemon mode (option `--daemon`)
+*   Updated viper and gokeepasslib libraries
+
 ## 1.1.1 (2019/03/27)
 *   Added credentials log message to debug better
 *   Fixed some code typos
