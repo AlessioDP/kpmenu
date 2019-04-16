@@ -117,7 +117,7 @@ func (c *Configuration) LoadConfig() error {
 // InitializeFlags prepare cli flags
 func (c *Configuration) InitializeFlags() {
 	// Flags
-	flag.BoolVar(&c.Flags.Daemon, "daemon", false, "Starts directly as daemon")
+	flag.BoolVar(&c.Flags.Daemon, "daemon", false, "Start kpmenu directly as daemon")
 	flag.BoolVarP(&c.Flags.Version, "version", "v", false, "Show kpmenu version")
 
 	// General
