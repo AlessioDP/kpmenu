@@ -30,8 +30,7 @@ func NewMenu() *Menu {
 // OpenDatabase asks for password and populates the database
 func (m *Menu) OpenDatabase() *ErrorDatabase {
 	// Check if there is already a password/key set
-	if len(m.Database.Keepass.Credentials.Passphrase) == 0 &&
-		len(m.Database.Keepass.Credentials.Key) == 0 {
+	if !m.Database.Loaded {
 		// Get password from config otherwise ask for it
 		password := m.Configuration.Database.Password
 		if password == "" {
@@ -87,6 +86,7 @@ func (m *Menu) OpenMenu() *ErrorDatabase {
 		}
 		return m.OpenMenu()
 	case MenuExit:
+		m.Database.Loaded = false
 		return NewErrorDatabase("exiting", nil, true)
 	}
 	return nil
