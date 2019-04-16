@@ -1,31 +1,32 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/AlessioDP/kpmenu)](https://goreportcard.com/report/github.com/AlessioDP/kpmenu) [![Travis CI](https://travis-ci.com/AlessioDP/kpmenu.svg?branch=master)](https://travis-ci.com/AlessioDP/kpmenu)
 # Kpmenu
 Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or rofi, menu.
 
 ## Features
-* Supports KDBX v3.1 and v4.0 (based on [gokeepasslib](https://github.com/tobischo/gokeepasslib))
-* Pretty fast database decode thanks to Go
-* Interfaced with dmenu or rofi
-* Customize dmenu/rofi with additional command arguments
-* Kpmenu main instance stay alive for future calls so you don't need to re-insert the password
-* The open database can be cached so you don't need to re-insert the password
-* Automatically put selected value into the clipboard (for a custom time)
-  * xsel and wl-clipboard supported
-  * By default it will use xsel, you can override it via config or `--clipboardTool` option
-* Hidden password typing
+*   Supports KDBX v3.1 and v4.0 (based on [gokeepasslib](https://github.com/tobischo/gokeepasslib))
+*   Pretty fast database decode thanks to Go
+*   Interfaced with dmenu or rofi
+*   Customize dmenu/rofi with additional command arguments
+*   Kpmenu main instance stay alive for future calls so you don't need to re-insert the password
+*   The open database can be cached so you don't need to re-insert the password
+*   Automatically put selected value into the clipboard (for a custom time)
+    *   xsel and wl-clipboard supported
+    *   By default it will use xsel, you can override it via config or `--clipboardTool` option
+    *   Hidden password typing
 
 ## Dependencies
-* `dmenu` or `rofi`
-* `xsel` or `wl-clipboard`
-* `go` (compile only)
+*   `dmenu` or `rofi`
+*   `xsel` or `wl-clipboard`
+*   `go` (compile only)
 
 ## Usage
 I created kpmenu to make an easy and fast way to access into my KeePass database. These are some commands that you can do:
 ```bash
 # Open a database
-kpmenu -db path/to/database.kdbx
+kpmenu -d path/to/database.kdbx
 
 # Open a database with a key
-kpmenu -db path/to/database.kdbx -k path/to/database.key
+kpmenu -d path/to/database.kdbx -k path/to/database.key
 
 # Open a database (credentials taken from config) with a password and rofi
 kpmenu -p "mypassword" -r
@@ -49,7 +50,6 @@ make build
 sudo make install
 ```
 
-
 ## Configuration
 You can set options via `config` or cli arguments.
 
@@ -57,7 +57,7 @@ Kpmenu will check for `$HOME/.config/kpmenu/config`, you can copy the [default o
 
 ## Options
 Options taken with `kpmenu --help`
-```
+```text
 Usage of ./kpmenu:
       --argsEntry string            Additional arguments for dmenu at entry selection, separated by a space
       --argsField string            Additional arguments for dmenu at field selection, separated by a space
