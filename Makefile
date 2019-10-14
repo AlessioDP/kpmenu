@@ -2,12 +2,14 @@ PKGNAME := kpmenu
 BINNAME := ${PKGNAME}
 DESTDIR := /usr
 
-.PHONY: all build clean install run uninstall
+.PHONY: all prepare build clean install run uninstall
 
-all: build
+all: prepare build
+
+prepare:
+	go get -v
 
 build:
-	go get -v
 	go build -v -o ${BINNAME}
 
 clean:
