@@ -1,4 +1,9 @@
 # Changelog
+## 1.2.1 /(2019/10/14)
+* Updated libraries
+* Improved makefile
+* Updated to go 1.13
+
 ## 1.2.0 (2019/04/16)
 *   Added daemon mode (option `--daemon`)
 *   Updated viper and gokeepasslib libraries
