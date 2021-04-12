@@ -9,7 +9,7 @@ import (
 )
 
 // Version is the version of kpmenu
-const Version = "1.2.1"
+const Version = "1.3.0"
 
 // Initialize is the function that initialize a menu, handle config and parse cli arguments
 func Initialize() *Menu {
@@ -133,17 +133,26 @@ func checkFlags(menu *Menu) error {
 	}
 
 	// Check if rofi is installed
-	if menu.Configuration.General.UseRofi {
+	if menu.Configuration.General.Menu == PromptRofi {
 		cmd := exec.Command("which", "rofi")
 		err := cmd.Run()
 		if err != nil {
 			log.Printf("rofi not found, using dmenu")
-			menu.Configuration.General.UseRofi = false
+			menu.Configuration.General.Menu = PromptDmenu
 		}
+	} else if menu.Configuration.General.Menu == PromptWofi {
+		cmd := exec.Command("which", "wofi")
+		err := cmd.Run()
+		if err != nil {
+			log.Printf("wofi not found, using dmenu")
+			menu.Configuration.General.Menu = PromptDmenu
+		}
+	} else if (menu.Configuration.General.Menu != PromptDmenu && menu.Configuration.General.Menu != PromptCustom) {
+		return errors.New("invalid menu option, exiting")
 	}
-
-	// Check if dmenu is installed
-	if !menu.Configuration.General.UseRofi {
+	
+	if menu.Configuration.General.Menu == PromptDmenu {
+		// Check if dmenu is installed
 		cmd := exec.Command("which", "dmenu")
 		err := cmd.Run()
 		if err != nil {

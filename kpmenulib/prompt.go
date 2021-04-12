@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	
+	"github.com/google/shlex"
 )
 
 // MenuSelection is an enum used for prompt menu selection
@@ -40,7 +42,8 @@ type ErrorPrompt struct {
 func PromptPassword(menu *Menu) (string, ErrorPrompt) {
 	// Prepare dmenu/rofi
 	var command []string
-	if menu.Configuration.General.UseRofi {
+	switch menu.Configuration.General.Menu {
+	case "rofi":
 		command = []string{
 			"rofi",
 			"-i",
@@ -48,13 +51,29 @@ func PromptPassword(menu *Menu) (string, ErrorPrompt) {
 			"-p", menu.Configuration.Style.TextPassword,
 			"-password",
 		}
-	} else {
+	case "wofi":
+		command = []string{
+			"wofi",
+			"-i",
+			"-d",
+			"-p", menu.Configuration.Style.TextPassword,
+			"--password",
+		}
+	case "dmenu":
 		command = []string{
 			"dmenu",
 			"-i",
 			"-p", menu.Configuration.Style.TextPassword,
 			"-nb", menu.Configuration.Style.PasswordBackground,
 			"-nf", menu.Configuration.Style.PasswordBackground,
+		}
+	case "custom":
+		var err error
+		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptPassword)
+		if err != nil {
+			var errorPrompt ErrorPrompt
+			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt password, exiting")
+			return "", errorPrompt
 		}
 	}
 
@@ -75,18 +94,35 @@ func PromptMenu(menu *Menu) (MenuSelection, ErrorPrompt) {
 
 	// Prepare dmenu/rofi
 	var command []string
-	if menu.Configuration.General.UseRofi {
+	switch menu.Configuration.General.Menu {
+	case "rofi":
 		command = []string{
 			"rofi",
 			"-i",
 			"-dmenu",
 			"-p", menu.Configuration.Style.TextMenu,
 		}
-	} else {
+	case "wofi":
+		command = []string{
+			"wofi",
+			"-i",
+			"-d",
+			"-p", menu.Configuration.Style.TextMenu,
+		}
+	case "dmenu":
 		command = []string{
 			"dmenu",
 			"-i",
 			"-p", menu.Configuration.Style.TextMenu,
+		}
+	case "custom":
+		var err error
+		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptMenu)
+		if err != nil {
+			var errorPrompt ErrorPrompt
+			errorPrompt.Cancelled = true
+			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt menu, exiting")
+			return 0, errorPrompt
 		}
 	}
 
@@ -123,18 +159,34 @@ func PromptEntries(menu *Menu) (*Entry, ErrorPrompt) {
 
 	// Prepare dmenu/rofi
 	var command []string
-	if menu.Configuration.General.UseRofi {
+	switch menu.Configuration.General.Menu {
+	case "rofi":
 		command = []string{
 			"rofi",
 			"-i",
 			"-dmenu",
 			"-p", menu.Configuration.Style.TextEntry,
 		}
-	} else {
+	case "wofi":
+		command = []string{
+			"wofi",
+			"-i",
+			"-d",
+			"-p", menu.Configuration.Style.TextEntry,
+		}
+	case "dmenu":
 		command = []string{
 			"dmenu",
 			"-i",
 			"-p", menu.Configuration.Style.TextEntry,
+		}
+	case "custom":
+		var err error
+		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptEntries)
+		if err != nil {
+			var errorPrompt ErrorPrompt
+			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt entries, exiting")
+			return nil, errorPrompt
 		}
 	}
 
@@ -199,18 +251,34 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 
 	// Prepare dmenu/rofi
 	var command []string
-	if menu.Configuration.General.UseRofi {
+	switch menu.Configuration.General.Menu {
+	case "rofi":
 		command = []string{
 			"rofi",
 			"-i",
 			"-dmenu",
-			"-p", menu.Configuration.Style.TextField,
+			"-p", menu.Configuration.Style.TextEntry,
 		}
-	} else {
+	case "wofi":
+		command = []string{
+			"wofi",
+			"-i",
+			"-d",
+			"-p", menu.Configuration.Style.TextEntry,
+		}
+	case "dmenu":
 		command = []string{
 			"dmenu",
 			"-i",
 			"-p", menu.Configuration.Style.TextField,
+		}
+	case "custom":
+		var err error
+		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptFields)
+		if err != nil {
+			var errorPrompt ErrorPrompt
+			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt fields, exiting")
+			return "", errorPrompt
 		}
 	}
 
@@ -267,7 +335,17 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 func executePrompt(command []string, input *strings.Reader) (result string, errorPrompt ErrorPrompt) {
 	var out bytes.Buffer
 	var outErr bytes.Buffer
-	cmd := exec.Command(command[0], command[1:]...)
+	var cmd *exec.Cmd
+	if len(command) == 0 {
+		errorPrompt.Cancelled = true
+		errorPrompt.Error = fmt.Errorf("the custom prompt command is empty")
+		return
+	} else if len(command) == 1 {
+		cmd = exec.Command(command[0])
+	} else {
+		cmd = exec.Command(command[0], command[1:]...)
+	}
+	
 
 	// Set stdout to out var
 	cmd.Stdout = &out

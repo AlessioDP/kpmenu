@@ -1,5 +1,13 @@
 # Changelog
-## 1.2.1 /(2019/10/14)
+## 1.3.0 (2021/04/12)
+* Added support for wofi
+* Added custom executables, now you can configure the executable for every prompt and clipboard action
+* `-r`/`--rofi` option is not used anymore, use `-m rofi`/`--menu=rofi` instead
+* Typo in logging
+* Updated libraries
+* Updated to go 1.16
+
+## 1.2.1 (2019/10/14)
 * Updated libraries
 * Improved makefile
 * Updated to go 1.13

@@ -1,12 +1,25 @@
 # This is the default config of kpmenu
 # You can store it into $HOME/.config/kpmenu/config
 [general]
-UseRofi = false
+# Supported: dmenu, rofi, wofi, custom
+Menu = "dmenu"
+# Supported: xsel, wl-clipboard, custom
 ClipboardTool = "xsel"
 ClipboardTimeout = 15
 NoCache = false
 CacheOneTime = false
 CacheTimeout = 60
+
+[executable]
+# Executable of menus used to prompt actions
+#CustomPromptPassword = 
+#CustomPromptMenu = 
+#CustomPromptEntries = 
+#CustomPromptFields = 
+# Executable of clipboard commands
+#CustomClipboardCopy = 
+#CustomClipboardPaste = 
+#CustomClipboardClean = 
 
 [style]
 PasswordBackground = "black"

@@ -2,20 +2,36 @@ package kpmenulib
 
 import (
 	"bytes"
+	"errors"
 	"log"
 	"os/exec"
 	"strings"
 	"time"
+	
+	"github.com/google/shlex"
 )
 
 // CopyToClipboard copies text into the clipboar
 func CopyToClipboard(menu *Menu, text string) error {
 	var cmd *exec.Cmd
-	// Execute xsel/wl-clipboard to update clipboard
-	if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
-		cmd = exec.Command("wl-copy")
-	} else {
+	// Execute xsel/wl-clipboard/custom to update clipboard
+	switch menu.Configuration.General.ClipboardTool {
+	case ClipboardToolXsel:
 		cmd = exec.Command("xsel", "-ib")
+	case ClipboardToolWlclipboard:
+		cmd = exec.Command("wl-copy")
+	case ClipboardToolCustom:
+		customCommand, err := shlex.Split(menu.Configuration.Executable.CustomClipboardCopy)
+		if err != nil {
+			return errors.New("failed to execute custom clipboard copy tool")
+		}
+		if len(customCommand) == 0 {
+			return errors.New("the custom clipboard copy executable is empty")
+		} else if len(customCommand) == 1 {
+			cmd = exec.Command(customCommand[0])
+		} else {
+			cmd = exec.Command(customCommand[0], customCommand[1:]...)
+		}
 	}
 
 	// Set sdtin
@@ -32,11 +48,24 @@ func GetClipboard(menu *Menu) (string, error) {
 	var out bytes.Buffer
 	var cmd *exec.Cmd
 
-	// Execute xsel/wl-clipboard to get clipboard
-	if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
-		cmd = exec.Command("wl-paste", "-n")
-	} else {
+	// Execute xsel/wl-clipboard/custom to get clipboard
+	switch menu.Configuration.General.ClipboardTool {
+	case ClipboardToolXsel:
 		cmd = exec.Command("xsel", "-b")
+	case ClipboardToolWlclipboard:
+		cmd = exec.Command("wl-paste", "-n")
+	case ClipboardToolCustom:
+		customCommand, err := shlex.Split(menu.Configuration.Executable.CustomClipboardPaste)
+		if err != nil {
+			return "", errors.New("failed to execute custom executable paste tool")
+		}
+		if len(customCommand) == 0 {
+			return "", errors.New("the custom clipboard paste executable is empty")
+		} else if len(customCommand) == 1 {
+			cmd = exec.Command(customCommand[0])
+		} else {
+			cmd = exec.Command(customCommand[0], customCommand[1:]...)
+		}
 	}
 
 	// Set stdout
@@ -66,18 +95,32 @@ func CleanClipboard(menu *Menu, text string) {
 			if err == nil {
 				if text == currentClipboard {
 					var cmd *exec.Cmd
-					// Execute xsel to clean clipboard
-					if menu.Configuration.General.ClipboardTool == ClipboardToolWlclipboard {
-						cmd = exec.Command("wl-copy", "-c")
-					} else {
+					// Execute clean clipboard
+					switch menu.Configuration.General.ClipboardTool {
+					case ClipboardToolXsel:
 						cmd = exec.Command("xsel", "-bc")
+					case ClipboardToolWlclipboard:
+						cmd = exec.Command("wl-copy", "-c")
+					case ClipboardToolCustom:
+						customCommand, err := shlex.Split(menu.Configuration.Executable.CustomClipboardClean)
+						if err == nil {
+							if len(customCommand) == 0 {
+								cmd = nil
+							} else if len(customCommand) == 1 {
+								cmd = exec.Command(customCommand[0])
+							} else {
+								cmd = exec.Command(customCommand[0], customCommand[1:]...)
+							}
+						}
 					}
 
 					// Run exec
-					if err = cmd.Run(); err != nil {
-						log.Printf("failed to clean '%s' clipboard: %s", menu.Configuration.General.ClipboardTool, err)
-					} else {
-						log.Printf("cleaned clipboard")
+					if cmd != nil {
+						if err = cmd.Run(); err != nil {
+							log.Printf("failed to clean '%s' clipboard: %s", menu.Configuration.General.ClipboardTool, err)
+						} else {
+							log.Printf("cleaned clipboard")
+						}
 					}
 				} else {
 					log.Printf("clean clipboard cancelled because its changed")

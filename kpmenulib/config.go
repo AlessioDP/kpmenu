@@ -12,20 +12,32 @@ import (
 
 // Configuration is the main structure of kpmenu config
 type Configuration struct {
-	General  ConfigurationGeneral
-	Style    ConfigurationStyle
-	Database ConfigurationDatabase
-	Flags    Flags
+	General    ConfigurationGeneral
+	Executable ConfigurationExecutable
+	Style      ConfigurationStyle
+	Database   ConfigurationDatabase
+	Flags      Flags
 }
 
 // ConfigurationGeneral is the sub-structure of the configuration related to general kpmenu settings
 type ConfigurationGeneral struct {
-	UseRofi          bool   // Use Rofi instead of dmenu
+	Menu             string // Which menu to use
 	ClipboardTool    string // Clipboard tool to use
 	ClipboardTimeout int    // Clipboard timeout before clean it
 	NoCache          bool   // Flag to do not cache master password
 	CacheOneTime     bool   // Cache the password only the first time you write it
 	CacheTimeout     int    // Timeout of cache
+}
+
+// ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu
+type ConfigurationExecutable struct {
+	CustomPromptPassword string // Custom executable for prompt password
+	CustomPromptMenu     string // Custom executable for prompt menu
+	CustomPromptEntries  string // Custom executable for prompt entries
+	CustomPromptFields   string // Custom executable for prompt fields
+	CustomClipboardCopy  string // Custom executable for clipboard copy
+	CustomClipboardPaste string // Custom executable for clipboard paste
+	CustomClipboardClean string // Custom executable for clipboard clean
 }
 
 // ConfigurationStyle is the sub-structure of the configuration related to style of dmenu
@@ -58,16 +70,26 @@ type Flags struct {
 	Version bool
 }
 
-// Clipboard tool to use for clipboard manager
+// Menu tools used for prompts
+const (
+	PromptDmenu  = "dmenu"
+	PromptRofi   = "rofi"
+	PromptWofi   = "wofi"
+	PromptCustom = "custom"
+)
+
+// Clipboard tools used for clipboard manager
 const (
 	ClipboardToolXsel        = "xsel"
 	ClipboardToolWlclipboard = "wl-clipboard"
+	ClipboardToolCustom      = "custom"
 )
 
 // NewConfiguration initializes a new Configuration pointer
 func NewConfiguration() *Configuration {
 	return &Configuration{
 		General: ConfigurationGeneral{
+			Menu:             PromptDmenu,
 			ClipboardTool:    ClipboardToolXsel,
 			ClipboardTimeout: 15,
 			CacheTimeout:     60,
@@ -98,17 +120,17 @@ func (c *Configuration) LoadConfig() error {
 	} else {
 		// Unmarshal general
 		if err := viper.UnmarshalKey("general", &c.General); err != nil {
-			return NewErrorParseConfiguration("Failed to parse config file (general): %v", err)
+			return NewErrorParseConfiguration("failed to parse config file (general): %v", err)
 		}
 
 		// Unmarshal style
 		if err := viper.UnmarshalKey("style", &c.Style); err != nil {
-			return NewErrorParseConfiguration("Failed to parse config file (style): %v", err)
+			return NewErrorParseConfiguration("failed to parse config file (style): %v", err)
 		}
 
 		// Unmarshal database
 		if err := viper.UnmarshalKey("database", &c.Database); err != nil {
-			return NewErrorParseConfiguration("Failed to parse config file (database): %v", err)
+			return NewErrorParseConfiguration("failed to parse config file (database): %v", err)
 		}
 	}
 	return nil
@@ -121,12 +143,20 @@ func (c *Configuration) InitializeFlags() {
 	flag.BoolVarP(&c.Flags.Version, "version", "v", false, "Show kpmenu version")
 
 	// General
-	flag.BoolVarP(&c.General.UseRofi, "rofi", "r", c.General.UseRofi, "Use rofi instead of dmenu")
+	flag.StringVarP(&c.General.Menu, "menu", "m", c.General.Menu, "Choose which menu to use")
 	flag.StringVar(&c.General.ClipboardTool, "clipboardTool", c.General.ClipboardTool, "Choose which clipboard tool to use")
 	flag.IntVarP(&c.General.ClipboardTimeout, "clipboardTime", "c", c.General.ClipboardTimeout, "Timeout of clipboard in seconds (0 = no timeout)")
 	flag.BoolVarP(&c.General.NoCache, "nocache", "n", c.General.NoCache, "Disable caching of database")
 	flag.BoolVar(&c.General.CacheOneTime, "cacheOneTime", c.General.CacheOneTime, "Cache the database only the first time")
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")
+
+	// Executable
+	flag.StringVar(&c.Executable.CustomPromptPassword, "customPromptPassword", c.Executable.CustomPromptPassword, "Custom executable for prompt password")
+	flag.StringVar(&c.Executable.CustomPromptMenu, "customPromptMenu", c.Executable.CustomPromptMenu, "Custom executable for prompt menu")
+	flag.StringVar(&c.Executable.CustomPromptEntries, "customPromptEntries", c.Executable.CustomPromptEntries, "Custom executable for prompt entries")
+	flag.StringVar(&c.Executable.CustomPromptFields, "customPromptFields", c.Executable.CustomPromptFields, "Custom executable for prompt fields")
+	flag.StringVar(&c.Executable.CustomClipboardCopy, "customClipboardCopy", c.Executable.CustomClipboardCopy, "Custom executable for clipboard copy")
+	flag.StringVar(&c.Executable.CustomClipboardPaste, "customClipboardPaste", c.Executable.CustomClipboardPaste, "Custom executable for clipboard paste")
 
 	// Style
 	flag.StringVar(&c.Style.PasswordBackground, "passwordBackground", c.Style.PasswordBackground, "Color of dmenu background and text for password selection, used to hide password typing")
