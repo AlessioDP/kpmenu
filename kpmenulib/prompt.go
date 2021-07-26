@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	
+
 	"github.com/google/shlex"
 )
 
@@ -365,7 +365,6 @@ func executePrompt(command []string, input *strings.Reader) (result string, erro
 	} else {
 		cmd = exec.Command(command[0], command[1:]...)
 	}
-	
 
 	// Set stdout to out var
 	cmd.Stdout = &out

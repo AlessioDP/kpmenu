@@ -1,40 +1,42 @@
 package kpmenulib
 
 import (
-	"crypto/sha1"
 	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/base32"
 	"encoding/binary"
-	"fmt"
 	"errors"
-	"strings"
+	"fmt"
 	"math"
-	"strconv"
 	"net/url"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/tobischo/gokeepasslib/v3"
 )
 
+// OTP constants
 const (
-	OTP = "otp"
-	TOTPSEED = "TOTP Seed"
+	OTP          = "otp"
+	TOTPSEED     = "TOTP Seed"
 	TOTPSETTINGS = "TOTP Settings"
-	TOTP = "totp"
-	OTPAUTH = "otpauth"
+	TOTP         = "totp"
+	OTPAUTH      = "otpauth"
 )
 
 // OTPAuth supports only TOTP (at the moment)
 type OTPAuth struct {
-	secret []byte
-	Type string
+	secret  []byte
+	Type    string
 	Account string
-        Issuer string
-        Period int
-        Digits int
-        err error
+	Issuer  string
+	Period  int
+	Digits  int
+	err     error
 }
 
+// OTPError is a structure that handle an error of otp
 type OTPError struct {
 	err error
 }
@@ -46,7 +48,7 @@ func (o OTPError) Error() string {
 // CreateOTP generates a time-sensitive TOTP code for a database entry.
 //
 // Modern versions of KeepassXC and Keepass2Android store this URL in the `otp` key. A historic version
-// stored data ds: 
+// stored data ds:
 //
 //     TOTP Seed = SECRET
 //     TOTP Settings = PERIOD;DIGITS
@@ -121,40 +123,40 @@ func getOffset(hash []byte) int {
 func CreateOTPAuth(a gokeepasslib.Entry) (otp OTPAuth, err error) {
 	for _, vd := range a.Values {
 		switch vd.Key {
-			default:
-				// Nothing
-			case OTP:
-				otp, err = parseOTPAuth(vd.Value.Content)
-				if err != nil {
-					return OTPAuth{}, OTPError {
-						err: fmt.Errorf("invalid key: %v", err),
-					}
+		default:
+			// Nothing
+		case OTP:
+			otp, err = parseOTPAuth(vd.Value.Content)
+			if err != nil {
+				return OTPAuth{}, OTPError{
+					err: fmt.Errorf("invalid key: %v", err),
 				}
-				return otp, nil
-			case TOTPSEED:
-				otp.Type = TOTP
-				otp.secret = []byte(vd.Value.Content)
-			case TOTPSETTINGS:
-				parts := strings.Split(vd.Value.Content, ";")
-				if len(parts) != 2 {
-					return otp, OTPError {
-						err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content), 
-					}
+			}
+			return otp, nil
+		case TOTPSEED:
+			otp.Type = TOTP
+			otp.secret = []byte(vd.Value.Content)
+		case TOTPSETTINGS:
+			parts := strings.Split(vd.Value.Content, ";")
+			if len(parts) != 2 {
+				return otp, OTPError{
+					err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content),
 				}
-				refresh, err := strconv.Atoi(parts[0])
-				if err != nil {
-					return otp, OTPError {
-						err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content), 
-					}
+			}
+			refresh, err := strconv.Atoi(parts[0])
+			if err != nil {
+				return otp, OTPError{
+					err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content),
 				}
-				otp.Period = refresh 
-				digits, err := strconv.Atoi(parts[1])
-				if err != nil {
-					return otp, OTPError {
-						err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content), 
-					}
+			}
+			otp.Period = refresh
+			digits, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return otp, OTPError{
+					err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content),
 				}
-				otp.Digits = digits 
+			}
+			otp.Digits = digits
 		}
 	}
 	return otp, nil
@@ -206,25 +208,24 @@ func parseOTPAuth(s string) (OTPAuth, error) {
 	}
 	for k, vs := range ur.Query() {
 		if len(vs) != 1 {
-			return OTPAuth{}, OTPError {
+			return OTPAuth{}, OTPError{
 				err: fmt.Errorf("invalid key, too many parameter values for %s", k),
 			}
 		}
 		switch k {
-			case "secret":
-				otp.secret = []byte(vs[0])
-			case "digits":
-				otp.Digits, err = strconv.Atoi(vs[0])
-				if err != nil {
-					return otp, OTPError { err: err }
-				}
-			case "period":
-				otp.Period, err = strconv.Atoi(vs[0])
-				if err != nil {
-					return otp, OTPError { err: err }
-				}
+		case "secret":
+			otp.secret = []byte(vs[0])
+		case "digits":
+			otp.Digits, err = strconv.Atoi(vs[0])
+			if err != nil {
+				return otp, OTPError{err: err}
+			}
+		case "period":
+			otp.Period, err = strconv.Atoi(vs[0])
+			if err != nil {
+				return otp, OTPError{err: err}
+			}
 		}
 	}
 	return otp, nil
 }
-
