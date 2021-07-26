@@ -333,7 +333,7 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 			value, ev = CreateOTP(entry.FullEntry, time.Now().Unix())
 			if ev != nil {
 				err.Cancelled = true
-				err.Error = fmt.Errorf("the custom prompt command is empty")
+				err.Error = fmt.Errorf("failed to create otp: %s", ev)
 				return value, err
 			}
 			return value, err
