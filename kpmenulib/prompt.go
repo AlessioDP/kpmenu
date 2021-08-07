@@ -304,7 +304,7 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 		blacklistFields := strings.Split(menu.Configuration.Database.FillBlacklist, " ")
 
 		for _, v := range entry.FullEntry.Values {
-			if v.Key == OTP || v.Key == TOTPSEED {
+			if !menu.Configuration.General.NoOTP && (v.Key == OTP || v.Key == TOTPSEED) {
 				hasOTP = true
 				continue
 			}
@@ -316,19 +316,19 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 		}
 	}
 
-	GENOTP := "*** Generate TOTP ***"
 	// Prepare input (dmenu items)
+	const GenerateOTP = "Generate OTP"
 	for _, f := range fields {
 		input.WriteString(f + "\n")
 	}
 	if hasOTP {
-		input.WriteString(GENOTP + "\n")
+		input.WriteString(GenerateOTP + "\n")
 	}
 
 	// Execute prompt
 	result, err := executePrompt(command, strings.NewReader(input.String()))
 	if err.Error == nil && !err.Cancelled {
-		if result == GENOTP {
+		if result == GenerateOTP {
 			var ev error
 			value, ev = CreateOTP(entry.FullEntry, time.Now().Unix())
 			if ev != nil {

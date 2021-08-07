@@ -27,6 +27,7 @@ type ConfigurationGeneral struct {
 	NoCache          bool   // Flag to do not cache master password
 	CacheOneTime     bool   // Cache the password only the first time you write it
 	CacheTimeout     int    // Timeout of cache
+	NoOTP            bool   // Flag to do not handle OTPs
 }
 
 // ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu
@@ -149,6 +150,7 @@ func (c *Configuration) InitializeFlags() {
 	flag.BoolVarP(&c.General.NoCache, "nocache", "n", c.General.NoCache, "Disable caching of database")
 	flag.BoolVar(&c.General.CacheOneTime, "cacheOneTime", c.General.CacheOneTime, "Cache the database only the first time")
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")
+	flag.BoolVar(&c.General.NoOTP, "nootp", c.General.NoOTP, "Disable OTP handling")
 
 	// Executable
 	flag.StringVar(&c.Executable.CustomPromptPassword, "customPromptPassword", c.Executable.CustomPromptPassword, "Custom executable for prompt password")
