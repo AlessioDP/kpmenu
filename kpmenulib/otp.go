@@ -126,7 +126,7 @@ func CreateOTPAuth(a gokeepasslib.Entry) (otp OTPAuth, err error) {
 		default:
 			// Nothing
 		case OTP:
-			otp, err = parseOTPAuth(vd.Value.Content)
+			otp, err = parseOTPAuth(strings.TrimSpace(vd.Value.Content))
 			if err != nil {
 				return OTPAuth{}, OTPError{
 					err: fmt.Errorf("invalid key: %v", err),
@@ -135,9 +135,9 @@ func CreateOTPAuth(a gokeepasslib.Entry) (otp OTPAuth, err error) {
 			return otp, nil
 		case TOTPSEED:
 			otp.Type = TOTP
-			otp.secret = []byte(vd.Value.Content)
+			otp.secret = []byte(strings.TrimSpace(vd.Value.Content))
 		case TOTPSETTINGS:
-			parts := strings.Split(vd.Value.Content, ";")
+			parts := strings.Split(strings.TrimSpace(vd.Value.Content), ";")
 			if len(parts) != 2 {
 				return otp, OTPError{
 					err: fmt.Errorf("wrong TOTP Settings format; expected `SECS;DIGS`, was %s", vd.Value.Content),
