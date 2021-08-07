@@ -9,6 +9,7 @@ ClipboardTimeout = 15
 NoCache = false
 CacheOneTime = false
 CacheTimeout = 60
+NoOTP = false
 
 [executable]
 # Executable of menus used to prompt actions
