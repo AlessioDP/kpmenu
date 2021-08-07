@@ -16,6 +16,9 @@ Kpmenu is a tool written in Go used to view a KeePass database via a dmenu, or r
     *   A custom executable can be defined for every action (copy/paste/clean clipboard)
     *   By default it will use xsel, you can override it via config or `--clipboardTool` option
     *   Hidden password typing
+*   OTP support
+    * If a field have an otp key, you can generate the number
+    * New OTP and old TOTP methods are supported
 
 ## Dependencies
 *   `go` (compile only)
@@ -86,6 +89,7 @@ Usage of kpmenu:
   -k, --keyfile string                Path to the database keyfile
   -m, --menu string                   Choose which menu to use (default "dmenu")
   -n, --nocache                       Disable caching of database
+      --nootp                         Disable OTP handling
   -p, --password string               Password of the database
       --passwordBackground string     Color of dmenu background and text for password selection, used to hide password typing (default "black")
       --textEntry string              Label for entry selection (default "Entry")

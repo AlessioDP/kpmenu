@@ -1,4 +1,8 @@
 # Changelog
+## 1.4.0 (2021/08/07)
+* Added OTP support
+* Updated go modules
+
 ## 1.3.0 (2021/04/12)
 * Added support for wofi
 * Added custom executables, now you can configure the executable for every prompt and clipboard action
