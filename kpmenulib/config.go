@@ -27,6 +27,7 @@ type ConfigurationGeneral struct {
 	NoCache          bool   // Flag to do not cache master password
 	CacheOneTime     bool   // Cache the password only the first time you write it
 	CacheTimeout     int    // Timeout of cache
+	Autotype         string // External autotype command
 }
 
 // ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu

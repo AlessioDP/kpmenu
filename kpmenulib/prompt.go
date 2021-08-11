@@ -332,6 +332,81 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 	return value, err
 }
 
+// PromptAutotype executes an external application to select an entry
+// Communication protocol:
+//   BNF-lite:
+//     optl   : opts "\0"
+//     opts   : opts "\n" opt | opt
+//     opt    : Title "\t" Window match
+//     fieldl : fields "\0"
+//     fields : fields "\n" field | field
+//     field  : KEY "\t" VALUE
+//  Protocol:
+//     -> optl
+//     <- Title
+//     -> fieldl
+//     <- EOF
+func PromptAutotype(menu *Menu) (*Entry, ErrorPrompt) {
+	var entry Entry
+	var input strings.Builder
+
+	// Prepare autotype command
+	var command []string
+	command = []string {menu.Configuration.General.Autotype}
+
+	// Add custom arguments
+	if menu.Configuration.Style.ArgsEntry != "" {
+		command = append(command, strings.Split(menu.Configuration.Style.ArgsEntry, " ")...)
+	}
+
+	// Prepare a list of entries
+	// Identified by the formatted title and the entry pointer
+	var listEntries []entryItem
+	reg, err := regexp.Compile(`{[a-zA-Z]+\}`)
+	if err != nil {
+		return &entry, ErrorPrompt{
+			Cancelled: false,
+			Error:     err,
+		}
+	}
+	for i, e := range menu.Database.Entries {
+		// Format entry
+		title := menu.Configuration.Style.FormatEntry
+		matches := reg.FindAllString(title, -1)
+
+		// Replace every match
+		for _, match := range matches {
+			valueType := match[1 : len(match)-1] // Removes { and }
+			value := ""                          // By default empty value
+			vd := e.FullEntry.GetContent(valueType)
+			if vd != "" {
+				value = vd
+			}
+			title = strings.Replace(title, match, value, -1)
+		}
+		// Be sure to point on the right entry, do not point to the local e
+		listEntries = append(listEntries, entryItem{Title: title, Entry: &menu.Database.Entries[i]})
+	}
+
+	// Prepare input (dmenu items)
+	for _, e := range listEntries {
+		input.WriteString(e.Title + "\n")
+	}
+
+	// Execute prompt
+	result, errPrompt := executePrompt(command, strings.NewReader(input.String()))
+	if errPrompt.Error == nil && !errPrompt.Cancelled {
+		// Get selected entry
+		for _, e := range listEntries {
+			if e.Title == result {
+				entry = *e.Entry
+				break
+			}
+		}
+	}
+	return &entry, errPrompt
+}
+
 func executePrompt(command []string, input *strings.Reader) (result string, errorPrompt ErrorPrompt) {
 	var out bytes.Buffer
 	var outErr bytes.Buffer
