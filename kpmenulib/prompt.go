@@ -6,7 +6,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	
+	"time"
+
 	"github.com/google/shlex"
 )
 
@@ -297,11 +298,16 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 		}
 	}
 
+	var hasOTP bool
 	// Populate with filling fields
 	if menu.Configuration.Database.FillOtherFields {
 		blacklistFields := strings.Split(menu.Configuration.Database.FillBlacklist, " ")
 
 		for _, v := range entry.FullEntry.Values {
+			if !menu.Configuration.General.NoOTP && (v.Key == OTP || v.Key == TOTPSEED) {
+				hasOTP = true
+				continue
+			}
 			if !contains(fields, v.Key) && !contains(blacklistFields, v.Key) {
 				if v.Value.Content != "" {
 					fields = append(fields, v.Key)
@@ -311,13 +317,27 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 	}
 
 	// Prepare input (dmenu items)
+	const GenerateOTP = "Generate OTP"
 	for _, f := range fields {
 		input.WriteString(f + "\n")
+	}
+	if hasOTP {
+		input.WriteString(GenerateOTP + "\n")
 	}
 
 	// Execute prompt
 	result, err := executePrompt(command, strings.NewReader(input.String()))
 	if err.Error == nil && !err.Cancelled {
+		if result == GenerateOTP {
+			var ev error
+			value, ev = CreateOTP(entry.FullEntry, time.Now().Unix())
+			if ev != nil {
+				err.Cancelled = true
+				err.Error = fmt.Errorf("failed to create otp: %s", ev)
+				return value, err
+			}
+			return value, err
+		}
 		// Check that the result is valid
 		if contains(fields, result) {
 			// Get field value
@@ -420,7 +440,6 @@ func executePrompt(command []string, input *strings.Reader) (result string, erro
 	} else {
 		cmd = exec.Command(command[0], command[1:]...)
 	}
-	
 
 	// Set stdout to out var
 	cmd.Stdout = &out
