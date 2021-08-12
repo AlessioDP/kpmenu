@@ -389,6 +389,7 @@ func PromptAutotype(menu *Menu) ErrorPrompt {
 			// For regexp, remove the wrapping // and replace all star globs with .*
 			if !strings.HasPrefix(at.Window, "//") {
 				ms = strings.ReplaceAll(at.Window, "*", ".*")
+			} else {
 				if len(ms) > 2 {
 					ms = ms[2:]
 				}
