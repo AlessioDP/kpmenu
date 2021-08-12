@@ -46,6 +46,13 @@ func Execute(menu *Menu) bool {
 		}
 	}
 
+	if !menu.Configuration.General.NoAutotype && menu.Configuration.Flags.Autotype {
+		if err := PromptAutotype(menu); err.Error != nil {
+			log.Print(err.Error)
+		}
+		return false
+	}
+
 	// Open menu
 	if err := menu.OpenMenu(); err != nil {
 		log.Print(err)

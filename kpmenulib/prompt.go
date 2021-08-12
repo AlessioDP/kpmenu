@@ -352,79 +352,103 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 	return value, err
 }
 
-// PromptAutotype executes an external application to select an entry
-// Communication protocol:
-//   BNF-lite:
-//     optl   : opts "\0"
-//     opts   : opts "\n" opt | opt
-//     opt    : Title "\t" Window match
-//     fieldl : fields "\0"
-//     fields : fields "\n" field | field
-//     field  : KEY "\t" VALUE
-//  Protocol:
-//     -> optl
-//     <- Title
-//     -> fieldl
-//     <- EOF
-func PromptAutotype(menu *Menu) (*Entry, ErrorPrompt) {
-	var entry Entry
-	var input strings.Builder
-
+// PromptAutotype executes an external application to select an entry and then
+// runs an autotype program with the entry's data.
+//
+// Field data is sent to the autotype child process on STDIN as TSV data. The
+// first row is the key sequence.
+//
+//    {USERNAME}{TAB}{PASSWORD}{ENTER}
+//    key <TAB> value <CR>
+//
+// If KeepassXC attributes for autotype exist for the record, they're used. If
+// they do not exist, username & password are used, and if OTP data exists for
+// the record, that is sent as the third field.
+//
+// STDIN is closed when all fields have been sent.
+//
+// Note that it is currently not possible to get the key sequence from the DB,
+// so it is always the default.
+func PromptAutotype(menu *Menu) ErrorPrompt {
 	// Prepare autotype command
 	var command []string
-	command = []string {menu.Configuration.General.Autotype}
+	command = strings.Split(menu.Configuration.Executable.CustomAutotypeWindowID, " ")
 
-	// Add custom arguments
-	if menu.Configuration.Style.ArgsEntry != "" {
-		command = append(command, strings.Split(menu.Configuration.Style.ArgsEntry, " ")...)
+	activeWindow, errPrompt := executePrompt(command, nil)
+	if errPrompt.Error != nil || errPrompt.Cancelled {
+		return errPrompt
 	}
 
-	// Prepare a list of entries
-	// Identified by the formatted title and the entry pointer
-	var listEntries []entryItem
-	reg, err := regexp.Compile(`{[a-zA-Z]+\}`)
-	if err != nil {
-		return &entry, ErrorPrompt{
-			Cancelled: false,
-			Error:     err,
-		}
-	}
-	for i, e := range menu.Database.Entries {
-		// Format entry
-		title := menu.Configuration.Style.FormatEntry
-		matches := reg.FindAllString(title, -1)
-
-		// Replace every match
-		for _, match := range matches {
-			valueType := match[1 : len(match)-1] // Removes { and }
-			value := ""                          // By default empty value
-			vd := e.FullEntry.GetContent(valueType)
-			if vd != "" {
-				value = vd
-			}
-			title = strings.Replace(title, match, value, -1)
-		}
-		// Be sure to point on the right entry, do not point to the local e
-		listEntries = append(listEntries, entryItem{Title: title, Entry: &menu.Database.Entries[i]})
-	}
-
-	// Prepare input (dmenu items)
-	for _, e := range listEntries {
-		input.WriteString(e.Title + "\n")
-	}
-
-	// Execute prompt
-	result, errPrompt := executePrompt(command, strings.NewReader(input.String()))
-	if errPrompt.Error == nil && !errPrompt.Cancelled {
-		// Get selected entry
-		for _, e := range listEntries {
-			if e.Title == result {
-				entry = *e.Entry
-				break
+	// Only a pointer to allow the nil test for a positive find
+	var entry *Entry
+	for _, e := range menu.Database.Entries {
+		ms := e.FullEntry.GetContent("Title")
+		at := e.FullEntry.AutoType.Association
+		// Check if there's a window association, and if so, make sure it's a regexp
+		if at != nil && at.Window != "" {
+			// For regexp, remove the wrapping // and replace all star globs with .*
+			if !strings.HasPrefix(at.Window, "//") {
+				ms = strings.ReplaceAll(at.Window, "*", ".*")
+				if len(ms) > 2 {
+					ms = ms[2:]
+				}
+				if len(ms) > 2 {
+					ms = ms[:len(ms)-2]
+				}
 			}
 		}
+		reg, err := regexp.Compile(ms)
+		if err != nil {
+			continue
+		}
+		if reg.Match([]byte(activeWindow)) {
+			entry = &e
+			break
+		}
 	}
-	return &entry, errPrompt
+
+	if entry == nil {
+		errPrompt.Error = fmt.Errorf("no autotype window match for %s", activeWindow)
+		return errPrompt
+	}
+
+	var input strings.Builder
+	fe := entry.FullEntry
+	if fe.AutoType.Association != nil && fe.AutoType.Association.KeystrokeSequence != "" {
+		input.WriteString(fe.AutoType.Association.KeystrokeSequence)
+		input.WriteString("\n")
+	} else if !menu.Configuration.General.NoOTP && (fe.GetContent(OTP) != "" || fe.GetContent(TOTPSEED) != "") {
+		input.WriteString("{USERNAME}{TAB}{PASSWORD}{TAB}{TOTP}{ENTER}\n")
+	} else {
+		input.WriteString("{USERNAME}{TAB}{PASSWORD}{ENTER}\n")
+	}
+	input.WriteString("UserName")
+	input.WriteString("\t")
+	input.WriteString(entry.FullEntry.GetContent("UserName"))
+	input.WriteString("\n")
+
+	input.WriteString("Password")
+	input.WriteString("\t")
+	input.WriteString(entry.FullEntry.GetContent("Password"))
+	input.WriteString("\n")
+
+	if !menu.Configuration.General.NoOTP && (fe.GetContent(OTP) != "" || fe.GetContent(TOTPSEED) != "") {
+		value, err := CreateOTP(fe, time.Now().Unix())
+		if err != nil {
+			errPrompt.Cancelled = true
+			errPrompt.Error = fmt.Errorf("failed to create otp: %s", err)
+			return errPrompt
+		}
+		input.WriteString("OTP")
+		input.WriteString("\t")
+		input.WriteString(value)
+		input.WriteString("\n")
+	}
+
+	command = strings.Split(menu.Configuration.Executable.CustomAutotypeTyper, " ")
+	_, errPrompt = executePrompt(command, strings.NewReader(input.String()))
+
+	return errPrompt
 }
 
 func executePrompt(command []string, input *strings.Reader) (result string, errorPrompt ErrorPrompt) {

@@ -28,18 +28,20 @@ type ConfigurationGeneral struct {
 	CacheOneTime     bool   // Cache the password only the first time you write it
 	CacheTimeout     int    // Timeout of cache
 	NoOTP            bool   // Flag to do not handle OTPs
-	Autotype         string // External autotype command
+	NoAutotype       bool   // Disable autotype
 }
 
 // ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu
 type ConfigurationExecutable struct {
-	CustomPromptPassword string // Custom executable for prompt password
-	CustomPromptMenu     string // Custom executable for prompt menu
-	CustomPromptEntries  string // Custom executable for prompt entries
-	CustomPromptFields   string // Custom executable for prompt fields
-	CustomClipboardCopy  string // Custom executable for clipboard copy
-	CustomClipboardPaste string // Custom executable for clipboard paste
-	CustomClipboardClean string // Custom executable for clipboard clean
+	CustomPromptPassword   string // Custom executable for prompt password
+	CustomPromptMenu       string // Custom executable for prompt menu
+	CustomPromptEntries    string // Custom executable for prompt entries
+	CustomPromptFields     string // Custom executable for prompt fields
+	CustomClipboardCopy    string // Custom executable for clipboard copy
+	CustomClipboardPaste   string // Custom executable for clipboard paste
+	CustomClipboardClean   string // Custom executable for clipboard clean
+	CustomAutotypeWindowID string // Custom executable for fetching title of active window
+	CustomAutotypeTyper    string // Custom executable for typing results
 }
 
 // ConfigurationStyle is the sub-structure of the configuration related to style of dmenu
@@ -68,8 +70,9 @@ type ConfigurationDatabase struct {
 
 // Flags is the sub-structure of the configuration used to handle flags that aren't into the config file
 type Flags struct {
-	Daemon  bool
-	Version bool
+	Daemon   bool
+	Version  bool
+	Autotype bool
 }
 
 // Menu tools used for prompts
@@ -85,6 +88,12 @@ const (
 	ClipboardToolXsel        = "xsel"
 	ClipboardToolWlclipboard = "wl-clipboard"
 	ClipboardToolCustom      = "custom"
+)
+
+// Autotype default helpers
+const (
+	AutotypeWindowIdentifier = "xdotool getwindowfocus getwindowname"
+	AutotypeTyper            = "quasiauto"
 )
 
 // NewConfiguration initializes a new Configuration pointer
@@ -107,6 +116,10 @@ func NewConfiguration() *Configuration {
 		Database: ConfigurationDatabase{
 			FieldOrder:      "Password UserName URL",
 			FillOtherFields: true,
+		},
+		Executable: ConfigurationExecutable{
+			CustomAutotypeWindowID: AutotypeWindowIdentifier,
+			CustomAutotypeTyper:    AutotypeTyper,
 		},
 	}
 }
@@ -143,6 +156,7 @@ func (c *Configuration) InitializeFlags() {
 	// Flags
 	flag.BoolVar(&c.Flags.Daemon, "daemon", false, "Start kpmenu directly as daemon")
 	flag.BoolVarP(&c.Flags.Version, "version", "v", false, "Show kpmenu version")
+	flag.BoolVar(&c.Flags.Autotype, "autotype", c.Flags.Autotype, "Initiate autotype")
 
 	// General
 	flag.StringVarP(&c.General.Menu, "menu", "m", c.General.Menu, "Choose which menu to use")
@@ -152,6 +166,7 @@ func (c *Configuration) InitializeFlags() {
 	flag.BoolVar(&c.General.CacheOneTime, "cacheOneTime", c.General.CacheOneTime, "Cache the database only the first time")
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")
 	flag.BoolVar(&c.General.NoOTP, "nootp", c.General.NoOTP, "Disable OTP handling")
+	flag.BoolVar(&c.General.NoAutotype, "noautotype", c.General.NoAutotype, "Disable autotype handling")
 
 	// Executable
 	flag.StringVar(&c.Executable.CustomPromptPassword, "customPromptPassword", c.Executable.CustomPromptPassword, "Custom executable for prompt password")
@@ -160,6 +175,8 @@ func (c *Configuration) InitializeFlags() {
 	flag.StringVar(&c.Executable.CustomPromptFields, "customPromptFields", c.Executable.CustomPromptFields, "Custom executable for prompt fields")
 	flag.StringVar(&c.Executable.CustomClipboardCopy, "customClipboardCopy", c.Executable.CustomClipboardCopy, "Custom executable for clipboard copy")
 	flag.StringVar(&c.Executable.CustomClipboardPaste, "customClipboardPaste", c.Executable.CustomClipboardPaste, "Custom executable for clipboard paste")
+	flag.StringVar(&c.Executable.CustomAutotypeWindowID, "customAutotypeWindowID", c.Executable.CustomAutotypeWindowID, "Custom executable for identifying active window for autotype")
+	flag.StringVar(&c.Executable.CustomAutotypeTyper, "customAutotypeTyper", c.Executable.CustomAutotypeTyper, "Custom executable for autotype typer")
 
 	// Style
 	flag.StringVar(&c.Style.PasswordBackground, "passwordBackground", c.Style.PasswordBackground, "Color of dmenu background and text for password selection, used to hide password typing")
