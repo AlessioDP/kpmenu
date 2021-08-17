@@ -282,138 +282,101 @@ func PromptChoose(menu *Menu, items []string) (int, ErrorPrompt) {
 //    {USERNAME}{TAB}{PASSWORD}{ENTER}
 //    key <TAB> value <CR>
 //
-// If KeepassXC attributes for autotype exist for the record, they're used. If
-// they do not exist, username & password are used, and if OTP data exists for
-// the record, that is sent as the third field.
+// If Keepass attributes for autotype exist for the record, they're used. If
+//  they do not exist, username & password are used; if there is no default key
+// sequence,  `{username}{tab}{password}{tab}{totp}{enter}` is used if OTP is
+// set and OTP  is not disabled, or `{USERNAME}{TAB}{PASSWORD}{ENTER}`
+// otherwise. The key  sequence is parsed, and only the key/values defined in
+// the sequence are sent. It is incumbent on the autotype callee to parse the
+// sequence for meta entries such as DELAY and special characters.
 //
 // STDIN is closed when all fields have been sent.
 //
-// Note that it is currently not possible to get the key sequence from the DB,
-// so it is always the default.
+// [Keepass match rules](https://keepass.info/help/base/autotype.html) are, in
+// order of precedence:
+// 1. Association string as a regexp (if the string is wrapped in `//`)
+// 2. Association string as a simple glob
+// 3. Entry title as a subset of the window title
+//
+// If multiple matches are found, the user is prompted to select one.
+//
+// If `--autotypenoauto` is set, the user will *always* be prompted run autotype, or cancel.
+//
+// `--noautotype` is handled by the caller -- this function does not perform that check.
 func PromptAutotype(menu *Menu) ErrorPrompt {
-	// TODO user select entry instead of xdotool
-	// Prepare autotype command
-	command := strings.Split(menu.Configuration.Executable.CustomAutotypeWindowID, " ")
-
-	activeWindow, errPrompt := executePrompt(command, nil)
-	if errPrompt.Error != nil || errPrompt.Cancelled {
-		return errPrompt
-	}
-
-	type pair struct {
-		reg string
-		ent Entry
-		seq string
-	}
-	matches := make([]pair, 0)
-	for _, e := range menu.Database.Entries {
-		defaultSequence := "{USERNAME}{TAB}{PASSWORD}{ENTER}"
-		if e.FullEntry.AutoType.DefaultSequence != "" {
-			defaultSequence = e.FullEntry.AutoType.DefaultSequence
-		}
-		// [Regexp, KeySequence]
-		mss := [][]string{{".*" + e.FullEntry.GetContent("Title") + ".*", defaultSequence}}
-		if e.FullEntry.AutoType.Associations != nil {
-			for _, at := range e.FullEntry.AutoType.Associations {
-				// Check if there's a window association, and if so, make sure it's a regexp
-				if at.Window == "" {
-					continue
-				}
-				ms := at.Window
-				if !strings.HasPrefix(at.Window, "//") {
-					// Replace all star globs with .*
-					ms = strings.ReplaceAll(ms, "*", ".*")
-				} else {
-					// For regexp, remove the wrapping
-					if len(ms) > 2 {
-						ms = ms[2:]
-					}
-					if len(ms) > 2 {
-						ms = ms[:len(ms)-2]
-					}
-				}
-				seq := defaultSequence
-				if at.KeystrokeSequence != "" {
-					seq = at.KeystrokeSequence
-				}
-				mss = append(mss, []string{ms, seq})
-			}
-		}
-		for _, ms := range mss {
-			reg, err := regexp.Compile(ms[0])
-			if err != nil {
-				continue
-			}
-			if reg.Match([]byte(activeWindow)) {
-				matches = append(matches, pair{ms[0], e, ms[1]})
-			}
-		}
-	}
-
-	var entry gokeepasslib.Entry
+	var entry *Entry
+	// The rule for keepass(es) key sequence selection is:
+	//    Assoc > Configured entry default > appl. default
 	var keySeq string
-	switch len(matches) {
-	case 0:
-		errPrompt.Error = fmt.Errorf("no autotype window match for %s", activeWindow)
-		return errPrompt
-	case 1:
-		entry = matches[0].ent.FullEntry
-		keySeq = matches[0].seq
-	default:
-		items := make([]string, len(matches))
-		for i, m := range matches {
-			items[i] = fmt.Sprintf("%s - %s - (%s)", m.ent.FullEntry.GetContent("Title"), m.reg, m.seq)
-		}
-		sel, err := PromptChoose(menu, items)
-		ep := ErrorPrompt{}
-		if err != ep || sel == -1 {
-			return ep
-		}
-		entry = matches[sel].ent.FullEntry
-		keySeq = matches[sel].seq
-	}
-
-	if len(matches) == 1 && menu.Configuration.General.AutotypeConfirm {
-		sel, err := PromptChoose(menu, []string{
-			"Auto-type " + matches[0].ent.FullEntry.GetContent("Title"),
-			"Cancel",
-		})
-		nulErr := ErrorPrompt{}
-		if sel != 0 || err != nulErr {
+	var errPrompt ErrorPrompt
+	if menu.Configuration.General.AutotypeNoAuto {
+		entry, errPrompt = PromptEntries(menu)
+		if entry == nil || errPrompt.Cancelled {
 			errPrompt.Cancelled = true
+			errPrompt.Error = fmt.Errorf("user cancelled")
+			return errPrompt
+		}
+
+		// Try to guess the key sequence
+		keySeq = entry.FullEntry.AutoType.DefaultSequence
+		if keySeq == "" {
+			if entry.FullEntry.AutoType.Associations != nil {
+				for _, assoc := range entry.FullEntry.AutoType.Associations {
+					if assoc.KeystrokeSequence != "" {
+						keySeq = assoc.KeystrokeSequence
+						break
+					}
+				}
+			}
+		}
+	} else {
+		entry, keySeq, errPrompt = identifyWindow(menu)
+		if entry == nil || errPrompt.Cancelled {
+			errPrompt.Cancelled = true
+			errPrompt.Error = fmt.Errorf("no entry matched")
 			return errPrompt
 		}
 	}
 
+	if keySeq == "" {
+		keySeq = "{USERNAME}{TAB}{PASSWORD}{ENTER}"
+	}
+
+	fe := entry.FullEntry
 	var input strings.Builder
 	input.WriteString(keySeq)
 	input.WriteString("\n")
-	// TODO sequence parser, send only sequence keys
-	input.WriteString("UserName")
-	input.WriteString("\t")
-	input.WriteString(entry.GetContent("UserName"))
-	input.WriteString("\n")
-
-	input.WriteString("Password")
-	input.WriteString("\t")
-	input.WriteString(entry.GetContent("Password"))
-	input.WriteString("\n")
-
-	if !menu.Configuration.General.NoOTP && (entry.GetContent(OTP) != "" || entry.GetContent(TOTPSEED) != "") {
-		value, err := CreateOTP(entry, time.Now().Unix())
-		if err != nil {
-			errPrompt.Cancelled = true
-			errPrompt.Error = fmt.Errorf("failed to create otp: %s", err)
-			return errPrompt
+	seq := NewSequence()
+	seq.Parse(keySeq)
+	for _, k := range seq.SeqEntries {
+		if k.Type == FIELD {
+			var value string
+			if k.Token == "TOTP" {
+				// If the sequence asks for TOTP but the user has disabled it
+				// write a dummy code. **Not** writing it would break the
+				// sequence, which is ordered.
+				if menu.Configuration.General.NoOTP {
+					value = "000000"
+				} else {
+					var err error
+					value, err = CreateOTP(fe, time.Now().Unix())
+					if err != nil {
+						errPrompt.Cancelled = true
+						errPrompt.Error = fmt.Errorf("failed to create otp: %s", err)
+						return errPrompt
+					}
+				}
+			} else {
+				value = getContent(fe, k.Token)
+			}
+			input.WriteString(k.Token)
+			input.WriteString("\t")
+			input.WriteString(value)
+			input.WriteString("\n")
 		}
-		input.WriteString("OTP")
-		input.WriteString("\t")
-		input.WriteString(value)
-		input.WriteString("\n")
 	}
-	fmt.Printf("Sending:\n%s\n", input.String())
 
-	command = strings.Split(menu.Configuration.Executable.CustomAutotypeTyper, " ")
+	command := strings.Split(menu.Configuration.Executable.CustomAutotypeTyper, " ")
 	_, errPrompt = executePrompt(command, strings.NewReader(input.String()))
 
 	return errPrompt
@@ -457,15 +420,6 @@ func executePrompt(command []string, input *strings.Reader) (result string, erro
 	// Trim output
 	result = strings.TrimRight(out.String(), "\n")
 	return
-}
-
-func contains(array []string, value string) bool {
-	for _, n := range array {
-		if value == n {
-			return true
-		}
-	}
-	return false
 }
 
 func (el MenuSelection) String() string {
@@ -518,4 +472,110 @@ func getCommand(menu *Menu, style string, pass bool, custom string) ([]string, E
 		}
 	}
 	return command, ErrorPrompt{}
+}
+
+func identifyWindow(menu *Menu) (*Entry, string, ErrorPrompt) {
+	// Prepare autotype command
+	command := strings.Split(menu.Configuration.Executable.CustomAutotypeWindowID, " ")
+
+	activeWindow, errPrompt := executePrompt(command, nil)
+	if errPrompt.Error != nil || errPrompt.Cancelled {
+		return &Entry{}, "", errPrompt
+	}
+
+	type pair struct {
+		reg string
+		ent Entry
+		seq string
+	}
+	matches := make([]pair, 0)
+	for _, e := range menu.Database.Entries {
+		defaultSequence := "{USERNAME}{TAB}{PASSWORD}{ENTER}"
+		if e.FullEntry.AutoType.DefaultSequence != "" {
+			defaultSequence = e.FullEntry.AutoType.DefaultSequence
+		}
+		// [Regexp, KeySequence]
+		mss := [][]string{{".*" + e.FullEntry.GetContent("Title") + ".*", defaultSequence}}
+		if e.FullEntry.AutoType.Associations != nil {
+			for _, at := range e.FullEntry.AutoType.Associations {
+				// Check if there's a window association, and if so, make sure it's a regexp
+				if at.Window == "" {
+					continue
+				}
+				ms := at.Window
+				if !strings.HasPrefix(at.Window, "//") {
+					// Replace all star globs with .*
+					ms = strings.ReplaceAll(ms, "*", ".*")
+				} else {
+					// For regexp, remove the wrapping
+					if len(ms) > 2 {
+						ms = ms[2:]
+					}
+					if len(ms) > 2 {
+						ms = ms[:len(ms)-2]
+					}
+				}
+				seq := defaultSequence
+				if at.KeystrokeSequence != "" {
+					seq = at.KeystrokeSequence
+				}
+				mss = append(mss, []string{ms, seq})
+			}
+		}
+		for _, ms := range mss {
+			reg, err := regexp.Compile(ms[0])
+			if err != nil {
+				continue
+			}
+			if reg.Match([]byte(activeWindow)) {
+				matches = append(matches, pair{ms[0], e, ms[1]})
+			}
+		}
+	}
+
+	var entry *Entry
+	var keySeq string
+	switch len(matches) {
+	case 0:
+		errPrompt.Error = fmt.Errorf("no autotype window match for %s", activeWindow)
+		return entry, keySeq, errPrompt
+	case 1:
+		entry = &matches[0].ent
+		keySeq = matches[0].seq
+	default:
+		items := make([]string, len(matches))
+		for i, m := range matches {
+			items[i] = fmt.Sprintf("%s - %s - (%s)", m.ent.FullEntry.GetContent("Title"), m.reg, m.seq)
+		}
+		sel, err := PromptChoose(menu, items)
+		ep := ErrorPrompt{}
+		if err != ep || sel == -1 {
+			return entry, keySeq, ep
+		}
+		entry = &matches[sel].ent
+		keySeq = matches[sel].seq
+	}
+
+	if len(matches) == 1 && menu.Configuration.General.AutotypeConfirm {
+		sel, err := PromptChoose(menu, []string{
+			"Auto-type " + entry.FullEntry.GetContent("Title"),
+			"Cancel",
+		})
+		nulErr := ErrorPrompt{}
+		if sel != 0 || err != nulErr {
+			errPrompt.Cancelled = true
+			return entry, "", errPrompt
+		}
+	}
+	return entry, keySeq, errPrompt
+}
+
+func getContent(e gokeepasslib.Entry, k string) string {
+	k = strings.ToLower(k)
+	for _, v := range e.Values {
+		if strings.ToLower(v.Key) == k {
+			return v.Value.Content
+		}
+	}
+	return ""
 }

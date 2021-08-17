@@ -28,8 +28,9 @@ type ConfigurationGeneral struct {
 	CacheOneTime     bool   // Cache the password only the first time you write it
 	CacheTimeout     int    // Timeout of cache
 	NoOTP            bool   // Flag to do not handle OTPs
-	NoAutotype       bool   // Disable autotype
+	DisableAutotype  bool   // Disable autotype
 	AutotypeConfirm  bool   // User must always confirm
+	AutotypeNoAuto   bool   // Always prompt user to select the entry to autotype
 }
 
 // ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu
@@ -167,8 +168,9 @@ func (c *Configuration) InitializeFlags() {
 	flag.BoolVar(&c.General.CacheOneTime, "cacheOneTime", c.General.CacheOneTime, "Cache the database only the first time")
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")
 	flag.BoolVar(&c.General.NoOTP, "nootp", c.General.NoOTP, "Disable OTP handling")
-	flag.BoolVar(&c.General.NoAutotype, "noautotype", c.General.NoAutotype, "Disable autotype handling")
+	flag.BoolVar(&c.General.DisableAutotype, "noautotype", c.General.DisableAutotype, "Disable autotype handling")
 	flag.BoolVar(&c.General.AutotypeConfirm, "autotypealwaysconfirm", c.General.AutotypeConfirm, "Always confirm autotype, even when there's only 1 selection")
+	flag.BoolVar(&c.General.AutotypeNoAuto, "autotypeusersel", c.General.AutotypeNoAuto, "Prompt for autotype entry instead of trying to detect by active window title")
 
 	// Executable
 	flag.StringVar(&c.Executable.CustomPromptPassword, "customPromptPassword", c.Executable.CustomPromptPassword, "Custom executable for prompt password")
