@@ -51,6 +51,7 @@ func StartServer(m *Menu) (err error) {
 		// Handle packet request
 		handlePacket := func(packet Packet) bool {
 			log.Printf("received a client call with args \"%v\"", packet.CliArguments)
+			m.Configuration.Flags.Autotype = false
 			m.CliArguments = packet.CliArguments
 			return Show(m)
 		}

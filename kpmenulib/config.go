@@ -29,6 +29,7 @@ type ConfigurationGeneral struct {
 	CacheTimeout     int    // Timeout of cache
 	NoOTP            bool   // Flag to do not handle OTPs
 	NoAutotype       bool   // Disable autotype
+	AutotypeConfirm  bool   // User must always confirm
 }
 
 // ConfigurationExecutable is the sub-structure of the configuration related to tools executed by kpmenu
@@ -167,6 +168,7 @@ func (c *Configuration) InitializeFlags() {
 	flag.IntVar(&c.General.CacheTimeout, "cacheTimeout", c.General.CacheTimeout, "Timeout of cache in seconds")
 	flag.BoolVar(&c.General.NoOTP, "nootp", c.General.NoOTP, "Disable OTP handling")
 	flag.BoolVar(&c.General.NoAutotype, "noautotype", c.General.NoAutotype, "Disable autotype handling")
+	flag.BoolVar(&c.General.AutotypeConfirm, "autotypealwaysconfirm", c.General.AutotypeConfirm, "Always confirm autotype, even when there's only 1 selection")
 
 	// Executable
 	flag.StringVar(&c.Executable.CustomPromptPassword, "customPromptPassword", c.Executable.CustomPromptPassword, "Custom executable for prompt password")

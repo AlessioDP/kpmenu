@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/shlex"
+	"github.com/tobischo/gokeepasslib/v3"
 )
 
 // MenuSelection is an enum used for prompt menu selection
@@ -42,40 +43,10 @@ type ErrorPrompt struct {
 // Returns the written password
 func PromptPassword(menu *Menu) (string, ErrorPrompt) {
 	// Prepare dmenu/rofi
-	var command []string
-	switch menu.Configuration.General.Menu {
-	case "rofi":
-		command = []string{
-			"rofi",
-			"-i",
-			"-dmenu",
-			"-p", menu.Configuration.Style.TextPassword,
-			"-password",
-		}
-	case "wofi":
-		command = []string{
-			"wofi",
-			"-i",
-			"-d",
-			"-p", menu.Configuration.Style.TextPassword,
-			"--password",
-		}
-	case "dmenu":
-		command = []string{
-			"dmenu",
-			"-i",
-			"-p", menu.Configuration.Style.TextPassword,
-			"-nb", menu.Configuration.Style.PasswordBackground,
-			"-nf", menu.Configuration.Style.PasswordBackground,
-		}
-	case "custom":
-		var err error
-		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptPassword)
-		if err != nil {
-			var errorPrompt ErrorPrompt
-			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt password, exiting")
-			return "", errorPrompt
-		}
+	command, err := getCommand(menu, menu.Configuration.Style.TextPassword, true, menu.Configuration.Executable.CustomPromptPassword)
+	ep := ErrorPrompt{}
+	if err != ep {
+		return "", err
 	}
 
 	// Add custom arguments
@@ -94,37 +65,10 @@ func PromptMenu(menu *Menu) (MenuSelection, ErrorPrompt) {
 	var input strings.Builder
 
 	// Prepare dmenu/rofi
-	var command []string
-	switch menu.Configuration.General.Menu {
-	case "rofi":
-		command = []string{
-			"rofi",
-			"-i",
-			"-dmenu",
-			"-p", menu.Configuration.Style.TextMenu,
-		}
-	case "wofi":
-		command = []string{
-			"wofi",
-			"-i",
-			"-d",
-			"-p", menu.Configuration.Style.TextMenu,
-		}
-	case "dmenu":
-		command = []string{
-			"dmenu",
-			"-i",
-			"-p", menu.Configuration.Style.TextMenu,
-		}
-	case "custom":
-		var err error
-		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptMenu)
-		if err != nil {
-			var errorPrompt ErrorPrompt
-			errorPrompt.Cancelled = true
-			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt menu, exiting")
-			return 0, errorPrompt
-		}
+	command, err := getCommand(menu, menu.Configuration.Style.TextMenu, false, menu.Configuration.Executable.CustomPromptMenu)
+	ep := ErrorPrompt{}
+	if err != ep {
+		return selection, err
 	}
 
 	// Add custom arguments
@@ -158,37 +102,11 @@ func PromptEntries(menu *Menu) (*Entry, ErrorPrompt) {
 	var entry Entry
 	var input strings.Builder
 
-	// Prepare dmenu/rofi
-	var command []string
-	switch menu.Configuration.General.Menu {
-	case "rofi":
-		command = []string{
-			"rofi",
-			"-i",
-			"-dmenu",
-			"-p", menu.Configuration.Style.TextEntry,
-		}
-	case "wofi":
-		command = []string{
-			"wofi",
-			"-i",
-			"-d",
-			"-p", menu.Configuration.Style.TextEntry,
-		}
-	case "dmenu":
-		command = []string{
-			"dmenu",
-			"-i",
-			"-p", menu.Configuration.Style.TextEntry,
-		}
-	case "custom":
-		var err error
-		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptEntries)
-		if err != nil {
-			var errorPrompt ErrorPrompt
-			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt entries, exiting")
-			return nil, errorPrompt
-		}
+	// Prepare autotype command
+	command, erp := getCommand(menu, menu.Configuration.Style.TextEntry, false, menu.Configuration.Executable.CustomPromptEntries)
+	ep := ErrorPrompt{}
+	if erp != ep {
+		return &entry, erp
 	}
 
 	// Add custom arguments
@@ -250,37 +168,11 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 	var value string
 	var input strings.Builder
 
-	// Prepare dmenu/rofi
-	var command []string
-	switch menu.Configuration.General.Menu {
-	case "rofi":
-		command = []string{
-			"rofi",
-			"-i",
-			"-dmenu",
-			"-p", menu.Configuration.Style.TextEntry,
-		}
-	case "wofi":
-		command = []string{
-			"wofi",
-			"-i",
-			"-d",
-			"-p", menu.Configuration.Style.TextEntry,
-		}
-	case "dmenu":
-		command = []string{
-			"dmenu",
-			"-i",
-			"-p", menu.Configuration.Style.TextField,
-		}
-	case "custom":
-		var err error
-		command, err = shlex.Split(menu.Configuration.Executable.CustomPromptFields)
-		if err != nil {
-			var errorPrompt ErrorPrompt
-			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt fields, exiting")
-			return "", errorPrompt
-		}
+	// Prepare autotype command
+	command, erp := getCommand(menu, menu.Configuration.Style.TextEntry, false, menu.Configuration.Executable.CustomPromptFields)
+	ep := ErrorPrompt{}
+	if erp != ep {
+		return value, erp
 	}
 
 	// Add custom arguments
@@ -352,6 +244,35 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 	return value, err
 }
 
+func PromptChoose(menu *Menu, items []string) (int, ErrorPrompt) {
+	var input strings.Builder
+
+	// Prepare autotype command
+	command, erp := getCommand(menu, menu.Configuration.Style.TextEntry, false, menu.Configuration.Executable.CustomPromptFields)
+	ep := ErrorPrompt{}
+	if erp != ep {
+		return -1, erp
+	}
+
+	// Prepare input (dmenu items)
+	for _, e := range items {
+		input.WriteString(e + "\n")
+	}
+
+	// Execute prompt
+	result, err := executePrompt(command, strings.NewReader(input.String()))
+	if err.Error == nil && !err.Cancelled {
+		// Ensures selection is one of the items
+		for i, sel := range items {
+			// Match for entry title and selected entry
+			if result == sel {
+				return i, err
+			}
+		}
+	}
+	return -1, err
+}
+
 // PromptAutotype executes an external application to select an entry and then
 // runs an autotype program with the entry's data.
 //
@@ -370,71 +291,116 @@ func PromptFields(menu *Menu, entry *Entry) (string, ErrorPrompt) {
 // Note that it is currently not possible to get the key sequence from the DB,
 // so it is always the default.
 func PromptAutotype(menu *Menu) ErrorPrompt {
+	// TODO user select entry instead of xdotool
 	// Prepare autotype command
-	var command []string
-	command = strings.Split(menu.Configuration.Executable.CustomAutotypeWindowID, " ")
+	command := strings.Split(menu.Configuration.Executable.CustomAutotypeWindowID, " ")
 
 	activeWindow, errPrompt := executePrompt(command, nil)
 	if errPrompt.Error != nil || errPrompt.Cancelled {
 		return errPrompt
 	}
 
-	// Only a pointer to allow the nil test for a positive find
-	var entry *Entry
+	type pair struct {
+		reg string
+		ent Entry
+		seq string
+	}
+	matches := make([]pair, 0)
 	for _, e := range menu.Database.Entries {
-		ms := e.FullEntry.GetContent("Title")
-		at := e.FullEntry.AutoType.Association
-		// Check if there's a window association, and if so, make sure it's a regexp
-		if at != nil && at.Window != "" {
-			// For regexp, remove the wrapping // and replace all star globs with .*
-			if !strings.HasPrefix(at.Window, "//") {
-				ms = strings.ReplaceAll(at.Window, "*", ".*")
-			} else {
-				if len(ms) > 2 {
-					ms = ms[2:]
+		defaultSequence := "{USERNAME}{TAB}{PASSWORD}{ENTER}"
+		if e.FullEntry.AutoType.DefaultSequence != "" {
+			defaultSequence = e.FullEntry.AutoType.DefaultSequence
+		}
+		// [Regexp, KeySequence]
+		mss := [][]string{{".*" + e.FullEntry.GetContent("Title") + ".*", defaultSequence}}
+		if e.FullEntry.AutoType.Associations != nil {
+			for _, at := range e.FullEntry.AutoType.Associations {
+				// Check if there's a window association, and if so, make sure it's a regexp
+				if at.Window == "" {
+					continue
 				}
-				if len(ms) > 2 {
-					ms = ms[:len(ms)-2]
+				ms := at.Window
+				if !strings.HasPrefix(at.Window, "//") {
+					// Replace all star globs with .*
+					ms = strings.ReplaceAll(ms, "*", ".*")
+				} else {
+					// For regexp, remove the wrapping
+					if len(ms) > 2 {
+						ms = ms[2:]
+					}
+					if len(ms) > 2 {
+						ms = ms[:len(ms)-2]
+					}
 				}
+				seq := defaultSequence
+				if at.KeystrokeSequence != "" {
+					seq = at.KeystrokeSequence
+				}
+				mss = append(mss, []string{ms, seq})
 			}
 		}
-		reg, err := regexp.Compile(ms)
-		if err != nil {
-			continue
-		}
-		if reg.Match([]byte(activeWindow)) {
-			entry = &e
-			break
+		for _, ms := range mss {
+			reg, err := regexp.Compile(ms[0])
+			if err != nil {
+				continue
+			}
+			if reg.Match([]byte(activeWindow)) {
+				matches = append(matches, pair{ms[0], e, ms[1]})
+			}
 		}
 	}
 
-	if entry == nil {
+	var entry gokeepasslib.Entry
+	var keySeq string
+	switch len(matches) {
+	case 0:
 		errPrompt.Error = fmt.Errorf("no autotype window match for %s", activeWindow)
 		return errPrompt
+	case 1:
+		entry = matches[0].ent.FullEntry
+		keySeq = matches[0].seq
+	default:
+		items := make([]string, len(matches))
+		for i, m := range matches {
+			items[i] = fmt.Sprintf("%s - %s - (%s)", m.ent.FullEntry.GetContent("Title"), m.reg, m.seq)
+		}
+		sel, err := PromptChoose(menu, items)
+		ep := ErrorPrompt{}
+		if err != ep || sel == -1 {
+			return ep
+		}
+		entry = matches[sel].ent.FullEntry
+		keySeq = matches[sel].seq
+	}
+
+	if len(matches) == 1 && menu.Configuration.General.AutotypeConfirm {
+		sel, err := PromptChoose(menu, []string{
+			"Auto-type " + matches[0].ent.FullEntry.GetContent("Title"),
+			"Cancel",
+		})
+		nulErr := ErrorPrompt{}
+		if sel != 0 || err != nulErr {
+			errPrompt.Cancelled = true
+			return errPrompt
+		}
 	}
 
 	var input strings.Builder
-	fe := entry.FullEntry
-	if fe.AutoType.Association != nil && fe.AutoType.Association.KeystrokeSequence != "" {
-		input.WriteString(fe.AutoType.Association.KeystrokeSequence)
-		input.WriteString("\n")
-	} else if !menu.Configuration.General.NoOTP && (fe.GetContent(OTP) != "" || fe.GetContent(TOTPSEED) != "") {
-		input.WriteString("{USERNAME}{TAB}{PASSWORD}{TAB}{TOTP}{ENTER}\n")
-	} else {
-		input.WriteString("{USERNAME}{TAB}{PASSWORD}{ENTER}\n")
-	}
+	input.WriteString(keySeq)
+	input.WriteString("\n")
+	// TODO sequence parser, send only sequence keys
 	input.WriteString("UserName")
 	input.WriteString("\t")
-	input.WriteString(entry.FullEntry.GetContent("UserName"))
+	input.WriteString(entry.GetContent("UserName"))
 	input.WriteString("\n")
 
 	input.WriteString("Password")
 	input.WriteString("\t")
-	input.WriteString(entry.FullEntry.GetContent("Password"))
+	input.WriteString(entry.GetContent("Password"))
 	input.WriteString("\n")
 
-	if !menu.Configuration.General.NoOTP && (fe.GetContent(OTP) != "" || fe.GetContent(TOTPSEED) != "") {
-		value, err := CreateOTP(fe, time.Now().Unix())
+	if !menu.Configuration.General.NoOTP && (entry.GetContent(OTP) != "" || entry.GetContent(TOTPSEED) != "") {
+		value, err := CreateOTP(entry, time.Now().Unix())
 		if err != nil {
 			errPrompt.Cancelled = true
 			errPrompt.Error = fmt.Errorf("failed to create otp: %s", err)
@@ -445,6 +411,7 @@ func PromptAutotype(menu *Menu) ErrorPrompt {
 		input.WriteString(value)
 		input.WriteString("\n")
 	}
+	fmt.Printf("Sending:\n%s\n", input.String())
 
 	command = strings.Split(menu.Configuration.Executable.CustomAutotypeTyper, " ")
 	_, errPrompt = executePrompt(command, strings.NewReader(input.String()))
@@ -503,4 +470,52 @@ func contains(array []string, value string) bool {
 
 func (el MenuSelection) String() string {
 	return menuSelections[el]
+}
+
+func getCommand(menu *Menu, style string, pass bool, custom string) ([]string, ErrorPrompt) {
+	var command []string
+	switch menu.Configuration.General.Menu {
+	case "rofi":
+		command = []string{
+			"rofi",
+			"-i",
+			"-dmenu",
+			"-p", style,
+		}
+		if pass {
+			command = append(command, "-password")
+		}
+	case "wofi":
+		command = []string{
+			"wofi",
+			"-i",
+			"-d",
+			"-p", style,
+		}
+		if pass {
+			command = append(command, "--password")
+		}
+	case "dmenu":
+		command = []string{
+			"dmenu",
+			"-i",
+			"-p", style,
+		}
+		if pass {
+			command = append(command, []string{
+				"-nb", menu.Configuration.Style.PasswordBackground,
+				"-nf", menu.Configuration.Style.PasswordBackground,
+			}...)
+		}
+	case "custom":
+		var err error
+		command, err = shlex.Split(custom)
+		if err != nil {
+			var errorPrompt ErrorPrompt
+			errorPrompt.Cancelled = true
+			errorPrompt.Error = fmt.Errorf("failed to parse custom prompt, exiting")
+			return []string{}, errorPrompt
+		}
+	}
+	return command, ErrorPrompt{}
 }
