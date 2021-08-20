@@ -94,7 +94,7 @@ const (
 
 // Autotype default helpers
 const (
-	AutotypeWindowIdentifier = "xdotool getwindowfocus getwindowname"
+	AutotypeWindowIdentifier = "quasiauto -title"
 	AutotypeTyper            = "quasiauto"
 )
 
