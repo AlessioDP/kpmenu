@@ -167,12 +167,23 @@ func checkFlags(menu *Menu) error {
 		if err != nil {
 			return errors.New("wl-clipboard not found, exiting")
 		}
-	} else {
+	} else if menu.Configuration.General.ClipboardTool == ClipboardToolXsel {
 		// Check if xsel is installed
 		cmd := exec.Command("which", "xsel")
 		err := cmd.Run()
 		if err != nil {
 			return errors.New("xsel not found, exiting")
+		}
+	} else if menu.Configuration.General.ClipboardTool == ClipboardToolCustom {
+		// Check if CustomClipboardCopy, CustomClipboardPaste and CustomClipboardClean are set
+		if menu.Configuration.Executable.CustomClipboardCopy == "" {
+			return errors.New("when clipboardTool is set to custom, CustomClipboardCopy must be set")
+		}
+		if menu.Configuration.Executable.CustomClipboardPaste == "" {
+			return errors.New("when clipboardTool is set to custom, CustomClipboardPaste must be set")
+		}
+		if menu.Configuration.Executable.CustomClipboardClean == "" {
+			return errors.New("when clipboardTool is set to custom, CustomClipboardClean must be set")
 		}
 	}
 	return nil
