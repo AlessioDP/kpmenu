@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+* Fixed custom clipboard executables
+
 ## 1.4.0 (2021/08/07)
 * Added OTP support
 * Updated go modules
