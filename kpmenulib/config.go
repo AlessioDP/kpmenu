@@ -149,6 +149,11 @@ func (c *Configuration) LoadConfig() error {
 		if err := viper.UnmarshalKey("database", &c.Database); err != nil {
 			return NewErrorParseConfiguration("failed to parse config file (database): %v", err)
 		}
+
+		// Unmarshal executable
+		if err := viper.UnmarshalKey("executable", &c.Executable); err != nil {
+			return NewErrorParseConfiguration("failed to parse config file (executable): %v", err)
+		}
 	}
 	return nil
 }
@@ -181,6 +186,7 @@ func (c *Configuration) InitializeFlags() {
 	flag.StringVar(&c.Executable.CustomClipboardPaste, "customClipboardPaste", c.Executable.CustomClipboardPaste, "Custom executable for clipboard paste")
 	flag.StringVar(&c.Executable.CustomAutotypeWindowID, "customAutotypeWindowID", c.Executable.CustomAutotypeWindowID, "Custom executable for identifying active window for autotype")
 	flag.StringVar(&c.Executable.CustomAutotypeTyper, "customAutotypeTyper", c.Executable.CustomAutotypeTyper, "Custom executable for autotype typer")
+	flag.StringVar(&c.Executable.CustomClipboardClean, "customClipboardClean", c.Executable.CustomClipboardClean, "Custom executable for clipboard clean")
 
 	// Style
 	flag.StringVar(&c.Style.PasswordBackground, "passwordBackground", c.Style.PasswordBackground, "Color of dmenu background and text for password selection, used to hide password typing")
