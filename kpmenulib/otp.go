@@ -50,15 +50,14 @@ func (o OTPError) Error() string {
 // Modern versions of KeepassXC and Keepass2Android store this URL in the `otp` key. A historic version
 // stored data ds:
 //
-//     TOTP Seed = SECRET
-//     TOTP Settings = PERIOD;DIGITS
+//	TOTP Seed = SECRET
+//	TOTP Settings = PERIOD;DIGITS
 //
 // If the `otp` key exists, it should be used and the TOTP values ignored; otherwise, the legacy values can
 // be used.
 //
 // entry is the DB entry for which to generate a code; time is the Unix time to generate for the code --
 // generally time.Now().Unix()
-//
 func CreateOTP(a gokeepasslib.Entry, time int64) (otp string, err error) {
 	otpa, err := CreateOTPAuth(a)
 	if err != nil {
@@ -91,6 +90,9 @@ func (o OTPAuth) Create(time int64) (otp string, err error) {
 
 	otp = fmt.Sprint(r % int32(pow(10, o.Digits)))
 	if len(otp) != o.Digits {
+		if len(otp) > o.Digits {
+			return otp, fmt.Errorf("otp length (%d) must be greater than Digits (%d)", len(otp), o.Digits)
+		}
 		rpt := strings.Repeat("0", o.Digits-len(otp))
 		otp = rpt + otp
 	}
@@ -165,11 +167,11 @@ func CreateOTPAuth(a gokeepasslib.Entry) (otp OTPAuth, err error) {
 // parseOTPAuth parses a Google Authenticator otpauth URL, which is used by
 // both KeepassXC and Keepass2Android.
 //
-//     otpauth://TYPE/LABEL?PARAMETERS
+//	otpauth://TYPE/LABEL?PARAMETERS
 //
 // e.g., the KeepassXC format is
 //
-//     otpauth://totp/ISSUER:USERNAME?secret=SECRET&period=SECONDS&digits=D&issuer=ISSUER
+//	otpauth://totp/ISSUER:USERNAME?secret=SECRET&period=SECONDS&digits=D&issuer=ISSUER
 //
 // where TITLE is the record entry title, e.g. `github`; USERNAME is the entry
 // user name, e.g. `xxxserxxx`; SECRET is the TOTP seed secret; SECONDS is the
@@ -179,7 +181,10 @@ func CreateOTPAuth(a gokeepasslib.Entry) (otp OTPAuth, err error) {
 //
 // The spec is at https://github.com/google/google-authenticator/wiki/Key-Uri-Format
 func parseOTPAuth(s string) (OTPAuth, error) {
-	otp := OTPAuth{}
+	otp := OTPAuth{
+		Digits: 6,
+		Period: 30,
+	}
 	u, err := url.ParseRequestURI(s)
 	if err != nil {
 		return otp, err
